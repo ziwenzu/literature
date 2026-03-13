@@ -1,0 +1,93 @@
+# Copy this file, change the keyword/output settings, and run:
+# python3 literature/_Preprocess/journal_keyword_scraper_template.py --config /path/to/your_config.toml
+
+prefix = "example_keyword"
+output_dir = "literature/Example Folder"
+
+# Exact phrases or keywords you want to keep in the final matched set.
+keywords = ["state capacity"]
+
+# Broad search queries used during discovery.
+# If omitted, the script reuses `keywords`.
+search_queries = ["state capacity", "state-building"]
+
+# Discovery providers:
+# - `openalex`: broad API discovery + metadata enrichment
+# - `crossref`: extra bibliographic coverage by journal
+# - `scholar_csv`: optional local import from Google Scholar tools such as Publish or Perish
+discovery_providers = ["openalex", "crossref"]
+
+# OpenAlex strategies:
+# - `search` is broader
+# - `title_search` is narrower but often more precise
+openalex_discovery_strategies = ["search", "title_search"]
+
+# Fields used for final keyword matching after discovery.
+match_fields = ["title", "abstract"]
+
+# `any` keeps a record if any keyword matches.
+# `all` requires every keyword in `keywords` to appear.
+match_mode = "any"
+
+# Optional. Omit to search all years available from OpenAlex.
+year_cutoff = 1950
+
+download_pdfs = true
+download_workers = 8
+
+# Keep raw OpenAlex-enriched candidates for audit/review.
+write_candidates_jsonl = true
+write_summary_json = true
+
+# Use true if you only want manifests/candidates and no download attempts.
+dry_run = false
+
+# Respect publisher crawling limits rather than attempting to bypass them.
+respect_robots_txt = true
+api_request_delay_seconds = 0.2
+html_request_delay_seconds = 1.0
+request_jitter_seconds = 0.2
+anti_bot_backoff_seconds = 20.0
+
+# Optional local CSVs exported from Publish or Perish / Scholar tooling.
+# scholar_csv_paths = ["/absolute/path/to/google_scholar_export.csv"]
+
+# Optional override patterns.
+review_title_patterns = [
+  "\\bbook review\\b",
+  "^\\s*review essay\\b",
+  "^\\s*review of\\b",
+  "\\bedited by\\b",
+  "\\bPp\\.\\b",
+  "\\.\\s*By\\s+[A-Z]",
+]
+
+abstract_exclude_patterns = [
+  "behavioral risk factor surveillance",
+  "developmental surveillance",
+  "surveillance department",
+  "post-market surveillance",
+  "budget surveillance",
+  "import surveillance",
+]
+
+# Optional: override the built-in journal set by uncommenting and editing.
+# The default built-in set already includes:
+# APSR, AJPS, JOP, CPS, World Politics, International Organization, BJPS, PSRM,
+# AER, AEJ journals, JPE, Journal of Public Economics, JDE, Econometrica,
+# QJE, Review of Economic Studies, JEEA, Economic Journal, and ARPS.
+
+# [[journals]]
+# code = "APSR"
+# display_name = "American Political Science Review"
+# openalex_source_id = "S176007004"
+# filename_slug = "apsr"
+# publisher = "Cambridge University Press"
+# publisher_domains = ["cambridge.org", "jstor.org"]
+# title_aliases = []
+
+# [[journals]]
+# code = "AJPS"
+# display_name = "American Journal of Political Science"
+# openalex_source_id = "S90314269"
+# filename_slug = "ajps"

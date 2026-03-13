@@ -1,0 +1,8 @@
+*
+!.gitignore
+!README.md
+!_Preprocess/
+!_Preprocess/**
+_Preprocess/__pycache__/
+_Preprocess/*.pyc
+_Preprocess/.DS_Store
