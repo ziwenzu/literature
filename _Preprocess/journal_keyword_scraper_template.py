@@ -214,6 +214,15 @@ DEFAULT_SOURCES = [
         title_aliases=("Review of Economic Studies",),
     ),
     Source(
+        "RESTAT",
+        "The Review of Economics and Statistics",
+        "S180061323",
+        "restat",
+        publisher="MIT Press",
+        publisher_domains=("direct.mit.edu", "mitpressjournals.org"),
+        title_aliases=("Review of Economics and Statistics",),
+    ),
+    Source(
         "JEEA",
         "Journal of the European Economic Association",
         "S165087003",

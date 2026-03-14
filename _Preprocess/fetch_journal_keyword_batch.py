@@ -82,6 +82,12 @@ SOURCES = [
         "S165087003",
         "jeea",
     ),
+    Source(
+        "RESTAT",
+        "The Review of Economics and Statistics",
+        "S180061323",
+        "restat",
+    ),
 ]
 
 REVIEW_TITLE_RULES = [
