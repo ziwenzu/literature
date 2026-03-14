@@ -29,6 +29,7 @@ if not REFERENCE_ROOT.exists():
     REFERENCE_ROOT = ROOT / "reference"
 REPORT_ROOT = ROOT / "_Preprocess"
 DUPLICATE_ROOT = ROOT / "_Duplicates"
+PENDING_JOURNAL_SOURCES_PATH = REPORT_ROOT / "crawler_next_journals.csv"
 TODAY = date.today().isoformat()
 USER_AGENT = "Codex Literature Vault Sync/2.0 (mailto:no-reply@example.com)"
 NOTES_FOLDER_NAME = NOTES_ROOT.name
@@ -67,10 +68,25 @@ SURNAME_PREFIXES = {
     "von",
 }
 
+SOURCE_CODE_STOPWORDS = {
+    "and",
+    "for",
+    "in",
+    "of",
+    "on",
+    "the",
+}
+
 STOPWORDS = {
+    "abstract",
+    "across",
+    "also",
+    "article",
     "about",
     "after",
     "among",
+    "argument",
+    "been",
     "before",
     "between",
     "beyond",
@@ -79,25 +95,60 @@ STOPWORDS = {
     "china",
     "courts",
     "development",
+    "dissertation",
     "digital",
     "effects",
     "evidence",
+    "faculty",
+    "find",
+    "findings",
+    "first",
     "from",
     "government",
+    "governance",
+    "have",
+    "having",
+    "however",
+    "institutions",
+    "institutional",
+    "into",
     "judicial",
     "law",
     "lawyers",
     "legal",
+    "less",
+    "main",
+    "more",
+    "paper",
     "political",
     "politics",
     "public",
+    "regime",
+    "regimes",
+    "results",
     "rule",
+    "second",
+    "shows",
     "state",
     "study",
     "surveillance",
     "system",
+    "than",
+    "that",
+    "their",
+    "there",
+    "these",
+    "third",
+    "this",
+    "theory",
     "through",
+    "those",
+    "under",
     "using",
+    "when",
+    "where",
+    "while",
+    "which",
     "with",
 }
 
@@ -157,6 +208,7 @@ KNOWN_JOURNALS = {
     "ej": "The Economic Journal",
     "io": "International Organization",
     "jde": "Journal of Development Economics",
+    "jcc": "Journal of Contemporary China",
     "jeea": "Journal of the European Economic Association",
     "jlc": "Journal of Law and Courts",
     "jop": "The Journal of Politics",
@@ -170,7 +222,45 @@ KNOWN_JOURNALS = {
     "qje": "Quarterly Journal of Economics",
     "restat": "The Review of Economics and Statistics",
     "restud": "Review of Economic Studies",
-    "wp": "World Politics",
+    "wpol": "World Politics",
+}
+
+JOURNAL_ABBR_ALIASES = {
+    "wp": "wpol",
+}
+
+WORKING_PAPER_HINTS = {
+    "cepr discussion paper",
+    "discussion paper",
+    "faculty research working paper",
+    "job market paper",
+    "manuscript",
+    "mimeo",
+    "nber working paper",
+    "ssrn",
+    "unpublished manuscript",
+    "working draft",
+    "working paper",
+}
+
+BOOK_PUBLISHER_HINTS = {
+    "cambridge university press",
+    "columbia university press",
+    "cornell university press",
+    "harvard university press",
+    "oxford university press",
+    "princeton university press",
+    "routledge",
+    "stanford university press",
+    "university of chicago press",
+    "yale university press",
+}
+
+BOOK_HINTS = {
+    "book chapter",
+    "edited volume",
+    "handbook",
+    "monograph",
 }
 
 FALLBACK_TITLE_SKIP = {
@@ -373,6 +463,89 @@ def list_source_notes(note_dir: Path) -> dict[str, Path]:
             continue
         notes[note_path.stem] = note_path
     return notes
+
+
+def build_note_index(collections: list[CollectionSpec]) -> dict[str, Any]:
+    canonical_dirs: dict[str, str] = {}
+    stems_by_dir: dict[str, list[str]] = {}
+    exact_paths: dict[str, str] = {}
+    for spec in collections:
+        note_paths = list_source_notes(spec.note_path)
+        stems = sorted(note_paths)
+        canonical_dir = f"{NOTES_FOLDER_NAME}/{spec.note_dir}"
+        aliases = {
+            canonical_dir,
+            f"Notes/{spec.note_dir}",
+            f"Reading Notes/{spec.note_dir}",
+            spec.note_dir,
+        }
+        for alias in aliases:
+            canonical_dirs[alias] = canonical_dir
+            stems_by_dir[alias] = stems
+        for stem, note_path in note_paths.items():
+            frontmatter, _ = load_note(note_path)
+            stem_aliases = [stem]
+            for alias_value in ensure_list(frontmatter.get("aliases")):
+                alias_text = normalize_space(str(alias_value))
+                if not alias_text or "/" in alias_text:
+                    continue
+                stem_aliases.append(alias_text)
+            for alias_stem in unique_preserve_order(stem_aliases):
+                for alias in aliases:
+                    exact_paths[f"{alias}/{alias_stem}"] = f"{canonical_dir}/{stem}"
+                    exact_paths[f"{alias}/{alias_stem}.md"] = f"{canonical_dir}/{stem}"
+        for stem in stems:
+            for alias in aliases:
+                exact_paths[f"{alias}/{stem}"] = f"{canonical_dir}/{stem}"
+                exact_paths[f"{alias}/{stem}.md"] = f"{canonical_dir}/{stem}"
+    return {
+        "canonical_dirs": canonical_dirs,
+        "stems_by_dir": stems_by_dir,
+        "exact_paths": exact_paths,
+    }
+
+
+def best_fuzzy_stem_match(stems: list[str], missing_stem: str) -> str | None:
+    if not stems:
+        return None
+    parsed_missing = parse_stem(missing_stem)
+    filtered: list[str] = []
+    for stem in stems:
+        parsed_candidate = parse_stem(stem)
+        if parsed_missing["author"] and parsed_candidate["author"] and parsed_candidate["author"] != parsed_missing["author"]:
+            continue
+        if parsed_missing["year"] and parsed_candidate["year"] and parsed_candidate["year"] != parsed_missing["year"]:
+            continue
+        filtered.append(stem)
+    candidates = filtered or stems
+    best = ""
+    best_score = 0.0
+    for stem in candidates:
+        score = SequenceMatcher(None, missing_stem, stem).ratio()
+        if score > best_score:
+            best = stem
+            best_score = score
+    return best if best_score >= 0.74 else None
+
+
+def canonicalize_note_target(target: str, note_index: dict[str, Any]) -> str | None:
+    raw = target.replace("\\", "/").strip()
+    if raw in note_index["exact_paths"]:
+        return note_index["exact_paths"][raw]
+    if raw.endswith(".md") and raw[:-3] in note_index["exact_paths"]:
+        return note_index["exact_paths"][raw[:-3]]
+    raw_no_ext = raw[:-3] if raw.endswith(".md") else raw
+    if "/" not in raw_no_ext:
+        return None
+    parent, stem = raw_no_ext.rsplit("/", 1)
+    canonical_parent = note_index["canonical_dirs"].get(parent)
+    stems = note_index["stems_by_dir"].get(parent, [])
+    if canonical_parent and stem in stems:
+        return f"{canonical_parent}/{stem}"
+    fuzzy = best_fuzzy_stem_match(stems, stem)
+    if canonical_parent and fuzzy:
+        return f"{canonical_parent}/{fuzzy}"
+    return None
 
 
 def load_note(note_path: Path) -> tuple[dict[str, Any], str]:
@@ -611,20 +784,30 @@ def entry_type_from_crossref(message: dict[str, Any], collection_name: str) -> s
         return "book"
     if type_name == "book-chapter":
         return "incollection"
-    if type_name == "report":
+    if type_name in {"posted-content", "report"}:
         return "techreport"
     if type_name == "dissertation" or collection_name == "Good Dissertation":
         return "phdthesis"
     return "misc"
 
 
+def canonical_journal_abbr(abbr: str, venue: str = "") -> str:
+    abbr = normalize_space(abbr).lower()
+    if not abbr:
+        return ""
+    venue_norm = normalize_title(venue)
+    if abbr == "wp":
+        return "wpol" if "world politics" in venue_norm else "wp"
+    return JOURNAL_ABBR_ALIASES.get(abbr, abbr)
+
+
 def infer_journal_abbr(venue: str, fallback: str = "") -> str:
-    fallback = normalize_space(fallback).lower()
-    if fallback:
+    fallback = canonical_journal_abbr(fallback, venue)
+    if fallback and fallback in KNOWN_JOURNALS:
         return fallback
     normalized = normalize_title(venue)
     if not normalized:
-        return ""
+        return fallback
     preferred = [
         ("american economic journal applied economics", "aejapplied"),
         ("american economic journal economic policy", "aejpolicy"),
@@ -635,6 +818,7 @@ def infer_journal_abbr(venue: str, fallback: str = "") -> str:
         ("review of economics and statistics", "restat"),
         ("american political science review", "apsr"),
         ("american journal of political science", "ajps"),
+        ("journal of contemporary china", "jcc"),
         ("journal of political economy", "jpe"),
         ("journal of development economics", "jde"),
         ("journal of the european economic association", "jeea"),
@@ -643,7 +827,7 @@ def infer_journal_abbr(venue: str, fallback: str = "") -> str:
         ("quarterly journal of economics", "qje"),
         ("british journal of political science", "bjps"),
         ("comparative political studies", "cps"),
-        ("world politics", "wp"),
+        ("world politics", "wpol"),
         ("international organization", "io"),
         ("political science research and methods", "psrm"),
         ("political communication", "polcomm"),
@@ -656,7 +840,131 @@ def infer_journal_abbr(venue: str, fallback: str = "") -> str:
         display_norm = normalize_title(display)
         if display_norm == normalized or display_norm in normalized or normalized in display_norm:
             return abbr
-    return ""
+    return fallback
+
+
+def unknown_journal_slug(venue: str) -> str:
+    venue = normalize_space(html.unescape(venue))
+    if not venue:
+        return ""
+    return slugify(venue).replace("-", "_")
+
+
+def suggested_source_code(venue: str) -> str:
+    ascii_venue = unicodedata.normalize("NFKD", html.unescape(venue or "")).encode("ascii", "ignore").decode("ascii")
+    words = [word for word in re.findall(r"[A-Za-z0-9]+", ascii_venue) if word.lower() not in SOURCE_CODE_STOPWORDS]
+    acronym = "".join(word[0] for word in words if word)
+    if 2 <= len(acronym) <= 8:
+        return acronym.upper()
+    compact = re.sub(r"[^A-Za-z0-9]+", "", ascii_venue).upper()
+    return (compact[:8] or "MISC")
+
+
+def source_tag_slug(metadata: dict[str, Any], fallback_abbr: str, collection_name: str) -> str:
+    venue = normalize_space(str(metadata.get("venue") or ""))
+    known = infer_journal_abbr(venue, str(metadata.get("journal_abbr") or fallback_abbr or ""))
+    if known and known in KNOWN_JOURNALS:
+        return known
+    entry_type = infer_entry_type(metadata, collection_name)
+    if entry_type == "article" and venue:
+        return unknown_journal_slug(venue)
+    return canonical_journal_abbr(fallback_abbr, venue)
+
+
+def working_paper_like(metadata: dict[str, Any]) -> bool:
+    entry_type = normalize_space(str(metadata.get("entry_type") or "")).lower()
+    if entry_type == "techreport":
+        return True
+    combined = normalize_title(
+        " ".join(
+            part
+            for part in [
+                normalize_space(str(metadata.get("venue") or "")),
+                normalize_space(str(metadata.get("publisher") or "")),
+                normalize_space(str(metadata.get("note") or "")),
+                normalize_space(str(metadata.get("title") or "")),
+            ]
+            if part
+        )
+    )
+    return any(hint in combined for hint in WORKING_PAPER_HINTS)
+
+
+def book_like(metadata: dict[str, Any]) -> bool:
+    entry_type = normalize_space(str(metadata.get("entry_type") or "")).lower()
+    combined = normalize_title(
+        " ".join(
+            part
+            for part in [
+                normalize_space(str(metadata.get("venue") or "")),
+                normalize_space(str(metadata.get("publisher") or "")),
+                normalize_space(str(metadata.get("note") or "")),
+            ]
+            if part
+        )
+    )
+    if "book chapter" in combined or ("chapter" in combined and "working paper" not in combined):
+        return True
+    if any(hint in combined for hint in BOOK_PUBLISHER_HINTS):
+        return True
+    if entry_type in {"book", "incollection"} and ("press" in combined or "routledge" in combined):
+        return True
+    return False
+
+
+def infer_entry_type(metadata: dict[str, Any], collection_name: str) -> str:
+    entry_type = normalize_space(str(metadata.get("entry_type") or "")).lower()
+    if collection_name == "Good Dissertation":
+        return "phdthesis"
+
+    venue = normalize_space(str(metadata.get("venue") or ""))
+    journal_abbr = infer_journal_abbr(venue, str(metadata.get("journal_abbr") or ""))
+    if journal_abbr and journal_abbr in KNOWN_JOURNALS:
+        return "article"
+    if working_paper_like(metadata):
+        return "techreport"
+    if book_like(metadata):
+        combined = normalize_title(
+            " ".join(
+                part
+                for part in [
+                    normalize_space(str(metadata.get("venue") or "")),
+                    normalize_space(str(metadata.get("publisher") or "")),
+                    normalize_space(str(metadata.get("note") or "")),
+                ]
+                if part
+            )
+        )
+        if entry_type == "incollection" or "book chapter" in combined or "chapter" in combined:
+            return "incollection"
+        return "book"
+    if venue and any(token in venue.lower() for token in ["university", "school", "department"]):
+        return "phdthesis"
+    if entry_type in {"article", "phdthesis", "techreport"}:
+        return entry_type
+    return "misc"
+
+
+def classify_name_suffix(metadata: dict[str, Any], fallback_abbr: str, collection_name: str) -> str:
+    venue = normalize_space(str(metadata.get("venue") or ""))
+    journal_abbr = infer_journal_abbr(venue, str(metadata.get("journal_abbr") or fallback_abbr or ""))
+    if journal_abbr and journal_abbr in KNOWN_JOURNALS:
+        return journal_abbr
+
+    legacy_or_manual_abbr = canonical_journal_abbr(fallback_abbr, venue)
+    if legacy_or_manual_abbr == "wp":
+        return "wp"
+
+    if working_paper_like(metadata):
+        return "wp"
+    if book_like(metadata):
+        return "book"
+    entry_type = infer_entry_type(metadata, collection_name)
+    if entry_type == "techreport":
+        return "wp"
+    if entry_type == "article" and venue:
+        return unknown_journal_slug(venue) or "misc"
+    return "misc"
 
 
 def first_author_slug(name: str) -> str:
@@ -700,15 +1008,7 @@ def significant_title_tokens(title: str) -> set[str]:
 
 
 def note_entry_type(metadata: dict[str, Any], collection_name: str) -> str:
-    if collection_name == "Good Dissertation":
-        return "phdthesis"
-    abbr = normalize_space(str(metadata.get("journal_abbr") or "")).lower()
-    venue = normalize_space(str(metadata.get("venue") or ""))
-    if abbr:
-        return "article"
-    if venue and any(token in venue.lower() for token in ["university", "school", "harvard", "stanford", "mit", "princeton"]):
-        return "phdthesis"
-    return "misc"
+    return infer_entry_type(metadata, collection_name)
 
 
 def bibtex_escape(value: str) -> str:
@@ -899,7 +1199,7 @@ class MetadataResolver:
         last_page = normalize_space(str(biblio.get("last_page") or ""))
         pages = f"{first_page}-{last_page}".strip("-") if first_page or last_page else ""
         abbr = infer_journal_abbr(venue, default_abbr)
-        return {
+        metadata = {
             "title": normalize_space(str(item.get("display_name") or "")),
             "authors": authors,
             "year": str(item.get("publication_year") or ""),
@@ -912,16 +1212,17 @@ class MetadataResolver:
             "issue": normalize_space(str(biblio.get("issue") or "")),
             "pages": pages,
             "publisher": "",
-            "entry_type": "phdthesis" if collection_name == "Good Dissertation" else ("article" if venue else "misc"),
             "source": "openalex",
         }
+        metadata["entry_type"] = infer_entry_type(metadata, collection_name)
+        return metadata
 
     def normalize_note_metadata(self, data: dict[str, Any], collection_name: str) -> dict[str, Any]:
         authors = ensure_list(data.get("authors"))
         doi = normalize_space(str(data.get("doi") or "")).lower()
         venue = normalize_space(str(data.get("venue") or ""))
         abbr = infer_journal_abbr(venue, normalize_space(str(data.get("journal_abbr") or "")).lower())
-        return {
+        metadata = {
             "title": normalize_space(str(data.get("title") or "")),
             "authors": [normalize_space(str(author)) for author in authors if normalize_space(str(author))],
             "year": str(data.get("year") or ""),
@@ -933,10 +1234,11 @@ class MetadataResolver:
             "volume": "",
             "issue": "",
             "pages": "",
-            "publisher": "",
-            "entry_type": note_entry_type(data, collection_name),
+            "publisher": normalize_space(str(data.get("publisher") or "")),
             "source": "note",
         }
+        metadata["entry_type"] = infer_entry_type(metadata, collection_name)
+        return metadata
 
     def resolve_metadata(self, pdf_path: Path, spec: CollectionSpec, note_data: dict[str, Any] | None = None) -> dict[str, Any]:
         parsed = parse_stem(pdf_path.stem)
@@ -997,7 +1299,7 @@ class MetadataResolver:
         abbr = infer_journal_abbr(venue, note_meta.get("journal_abbr", "") or parsed["abbr"])
         if not title:
             title = normalize_space(pdf_path.stem.replace("_", " "))
-        return {
+        metadata = {
             "title": title,
             "authors": authors,
             "year": year,
@@ -1010,10 +1312,11 @@ class MetadataResolver:
             "issue": "",
             "pages": "",
             "publisher": "",
-            "entry_type": "phdthesis" if spec.category == "Good Dissertation" else ("article" if abbr else "misc"),
             "note": "Metadata inferred from local PDF; review recommended.",
             "source": "fallback",
         }
+        metadata["entry_type"] = infer_entry_type(metadata, spec.category)
+        return metadata
 
 
 def build_abbr_map(collections: list[CollectionSpec]) -> dict[str, str]:
@@ -1029,8 +1332,8 @@ def build_abbr_map(collections: list[CollectionSpec]) -> dict[str, str]:
                 frontmatter, _ = load_note(note_path)
             except Exception:
                 continue
-            abbr = normalize_space(str(frontmatter.get("journal_abbr") or "")).lower()
             venue = normalize_space(str(frontmatter.get("venue") or ""))
+            abbr = canonical_journal_abbr(str(frontmatter.get("journal_abbr") or ""), venue)
             if abbr and venue:
                 abbr_map.setdefault(abbr, venue)
     return abbr_map
@@ -1048,18 +1351,19 @@ def title_needs_replacement(title: str, stem: str) -> bool:
 
 
 def build_desired_stem(current_stem: str, metadata: dict[str, Any]) -> str:
-    if looks_standardized_stem(current_stem) and not parse_stem(current_stem)["copy_suffix"]:
-        return current_stem
     parsed = parse_stem(current_stem)
     authors = metadata.get("authors") or []
     first_author = first_author_slug(str(authors[0])) if authors else ""
     author = first_author or parsed["author"] or slugify((metadata.get("title") or current_stem).split(" ")[0])
     year = normalize_space(str(metadata.get("year") or parsed["year"] or "undated"))
-    abbr = infer_journal_abbr(str(metadata.get("venue") or ""), str(metadata.get("journal_abbr") or parsed["abbr"] or "misc"))
+    abbr = classify_name_suffix(metadata, parsed["abbr"], str(metadata.get("category") or ""))
     abbr = slugify(abbr).replace("-", "_") if abbr else "misc"
     author = slugify(author).replace("-", "_")
     year = year if re.fullmatch(r"(19|20)\d{2}", year) else "undated"
-    return f"{author}_{year}_{abbr}"
+    desired = f"{author}_{year}_{abbr}"
+    if looks_standardized_stem(current_stem) and not parsed["copy_suffix"] and current_stem == desired:
+        return current_stem
+    return desired
 
 
 def hash_file(path: Path, cache: dict[Path, str]) -> str:
@@ -1078,6 +1382,61 @@ def files_identical(a: Path, b: Path, cache: dict[Path, str]) -> bool:
     if a.stat().st_size != b.stat().st_size:
         return False
     return hash_file(a, cache) == hash_file(b, cache)
+
+
+def archive_identical_folder_duplicates(
+    spec: CollectionSpec,
+    note_paths: dict[str, Path],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, list[str]]]:
+    hash_cache: dict[Path, str] = {}
+    grouped: dict[tuple[int, str], list[Path]] = {}
+    for pdf_path in sorted(spec.pdf_path.glob("*.pdf"), key=lambda path: path.name.lower()):
+        digest = hash_file(pdf_path, hash_cache)
+        grouped.setdefault((pdf_path.stat().st_size, digest), []).append(pdf_path)
+
+    archive_rows: list[dict[str, Any]] = []
+    review_rows: list[dict[str, Any]] = []
+    alias_map: dict[str, list[str]] = {}
+
+    for group in grouped.values():
+        if len(group) < 2:
+            continue
+        ranked = sorted(
+            group,
+            key=lambda path: (
+                0 if looks_standardized_stem(strip_copy_suffix(path.stem)) else 1,
+                0 if note_paths.get(path.stem) and not note_is_stub(note_paths.get(path.stem)) else 1,
+                0 if path.stem in note_paths else 1,
+                len(path.name),
+                path.name.lower(),
+            ),
+        )
+        primary_path = ranked[0]
+        primary_note = note_paths.get(primary_path.stem)
+        for duplicate_path in ranked[1:]:
+            duplicate_note = note_paths.get(duplicate_path.stem)
+            if duplicate_note_safe(duplicate_note, primary_note):
+                archived_path = archive_duplicate_pdf(duplicate_path, spec)
+                archive_rows.append(
+                    {
+                        "collection": spec.pdf_dir,
+                        "original_path": str(duplicate_path),
+                        "archived_path": str(archived_path),
+                        "primary_path": str(primary_path),
+                        "reason": "exact_duplicate_in_folder",
+                    }
+                )
+                alias_map.setdefault(primary_path.stem, []).append(duplicate_path.stem)
+                continue
+            review_rows.append(
+                {
+                    "collection": spec.pdf_dir,
+                    "pdf_path": str(duplicate_path),
+                    "conflict_path": str(primary_path),
+                    "reason": "exact_duplicate_with_two_non_stub_notes",
+                }
+            )
+    return archive_rows, review_rows, alias_map
 
 
 def next_available_pdf_path(pdf_dir: Path, desired_stem: str, current_path: Path) -> Path:
@@ -1159,6 +1518,24 @@ def merge_note_files(primary_path: Path, duplicate_path: Path, primary_stem: str
     duplicate_path.unlink()
 
 
+def collapse_orphaned_duplicate_notes(spec: CollectionSpec) -> int:
+    pdf_stems = {pdf_path.stem for pdf_path in spec.pdf_path.glob("*.pdf")}
+    note_paths = list_source_notes(spec.note_path)
+    collapsed = 0
+    for stem, note_path in sorted(note_paths.items()):
+        if stem in pdf_stems:
+            continue
+        parsed = parse_stem(stem)
+        if not parsed["copy_suffix"]:
+            continue
+        base_stem = strip_copy_suffix(stem)
+        if base_stem not in pdf_stems:
+            continue
+        merge_note_files(spec.note_path / f"{base_stem}.md", note_path, base_stem, stem)
+        collapsed += 1
+    return collapsed
+
+
 def repair_pdf_links(text: str, folder_map: dict[str, str]) -> str:
     def repl(match: re.Match[str]) -> str:
         folder = match.group(1)
@@ -1168,6 +1545,23 @@ def repair_pdf_links(text: str, folder_map: dict[str, str]) -> str:
         return f"[[{canonical}/{filename}{alias}]]"
 
     return re.sub(r"\[\[([^/\]|]+)/([^|\]]+\.pdf)(\|[^\]]+)?\]\]", repl, text)
+
+
+def repair_note_links(text: str, note_index: dict[str, Any]) -> str:
+    def repl(match: re.Match[str]) -> str:
+        inner = match.group(1)
+        parts = inner.split("|", 1)
+        target = parts[0]
+        if target.endswith(".pdf") or target.startswith("http"):
+            return match.group(0)
+        fixed = canonicalize_note_target(target, note_index)
+        if not fixed or fixed == target or fixed == target.removesuffix(".md"):
+            return match.group(0)
+        if len(parts) == 2:
+            return f"[[{fixed}|{parts[1]}]]"
+        return f"[[{fixed}]]"
+
+    return re.sub(r"\[\[([^\]]+)\]\]", repl, text)
 
 
 def repair_broken_self_pdf_links(body: str, spec: CollectionSpec, pdf_name: str) -> str:
@@ -1198,6 +1592,21 @@ def upsert_section(body: str, heading: str, content: str) -> str:
     if not body.strip():
         return section + "\n"
     return body.rstrip() + "\n\n" + section + "\n"
+
+
+def significant_text_tokens(text: str, limit: int = 24) -> set[str]:
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for token in normalize_title(text).split():
+        if len(token) < 4 or token in STOPWORDS:
+            continue
+        if token in seen:
+            continue
+        seen.add(token)
+        ordered.append(token)
+        if len(ordered) >= limit:
+            break
+    return set(ordered)
 
 
 def normalize_note_heading(body: str, title: str) -> str:
@@ -1264,6 +1673,7 @@ def merge_frontmatter(
     data["year"] = coerce_year(data.get("year") or metadata.get("year") or "")
     venue = normalize_space(str(data.get("venue") or metadata.get("venue") or ""))
     data["venue"] = venue
+    data["publisher"] = normalize_space(str(data.get("publisher") or metadata.get("publisher") or ""))
     data["category"] = spec.category
     data["topics"] = ensure_list(data.get("topics"))
     data["keywords"] = ensure_list(data.get("keywords"))
@@ -1275,7 +1685,8 @@ def merge_frontmatter(
     if not regions:
         regions = infer_regions(data["title"], str(metadata.get("abstract") or ""))
     data["regions"] = regions
-    data["journal_abbr"] = infer_journal_abbr(venue, str(data.get("journal_abbr") or metadata.get("journal_abbr") or ""))
+    data["entry_type"] = infer_entry_type({**metadata, **data}, spec.category)
+    data["journal_abbr"] = source_tag_slug({**metadata, **data}, str(data.get("journal_abbr") or metadata.get("journal_abbr") or ""), spec.category)
     data["cases"] = ensure_list(data.get("cases"))
     data["projects"] = ensure_list(data.get("projects"))
     data["status"] = data.get("status") or "imported-metadata"
@@ -1288,7 +1699,25 @@ def merge_frontmatter(
     data["zotero_key"] = normalize_space(str(data.get("zotero_key") or ""))
     data["date_added"] = data.get("date_added") or TODAY
     data["last_reviewed"] = TODAY
-    tags = [normalize_space(str(tag)) for tag in ensure_list(data.get("tags")) if normalize_space(str(tag))]
+    removable_source_tags = (
+        set(KNOWN_JOURNALS)
+        | set(JOURNAL_ABBR_ALIASES)
+        | {
+            "misc",
+            "book",
+            "wp",
+            "wpol",
+            "article",
+            normalize_space(str(frontmatter.get("journal_abbr") or "")).lower(),
+            normalize_space(str(metadata.get("journal_abbr") or "")).lower(),
+            unknown_journal_slug(venue),
+        }
+    )
+    tags = [
+        normalize_space(str(tag))
+        for tag in ensure_list(data.get("tags"))
+        if normalize_space(str(tag)) and normalize_space(str(tag)) not in removable_source_tags
+    ]
     tags.extend(["literature", "source-note", slugify(spec.category).replace("_", "-")])
     if data["journal_abbr"]:
         tags.append(str(data["journal_abbr"]))
@@ -1382,16 +1811,47 @@ def build_new_note(metadata: dict[str, Any], pdf_path: Path, spec: CollectionSpe
     return dump_frontmatter(frontmatter) + "\n".join(body_parts)
 
 
-def note_metadata_for_relations(note_path: Path) -> dict[str, Any]:
-    frontmatter, _ = load_note(note_path)
+def note_metadata_for_relations(note_path: Path, spec: CollectionSpec) -> dict[str, Any]:
+    frontmatter, body = load_note(note_path)
+    raw_tags = [normalize_space(str(tag)) for tag in ensure_list(frontmatter.get("tags")) if normalize_space(str(tag))]
+    common_tags = {
+        "literature",
+        "source-note",
+        "article",
+        "needs-summary",
+        "metadata-review",
+        slugify(spec.category).replace("_", "-"),
+    }
+    tags: list[str] = []
+    for tag in raw_tags:
+        if tag in common_tags:
+            continue
+        if tag.startswith("theme/"):
+            tags.append(tag.split("/", 1)[1].replace("_", " "))
+            continue
+        tags.append(tag.replace("_", " "))
+    summary_chunks = [
+        get_section(body, "Abstract / Extracted Summary"),
+        get_section(body, "Summary"),
+        get_section(body, "One-Sentence Takeaway"),
+        get_section(body, "Core Argument"),
+        get_section(body, "Research Question"),
+        get_section(body, "Source Excerpt"),
+    ]
     return {
         "stem": note_path.stem,
+        "note_dir": spec.note_dir,
+        "category": spec.category,
         "title": normalize_space(str(frontmatter.get("title") or "")),
         "authors": [normalize_space(str(author)) for author in ensure_list(frontmatter.get("authors")) if normalize_space(str(author))],
         "keywords": [normalize_space(str(keyword)) for keyword in ensure_list(frontmatter.get("keywords")) if normalize_space(str(keyword))],
         "topics": [normalize_space(str(topic)) for topic in ensure_list(frontmatter.get("topics")) if normalize_space(str(topic))],
         "methods": [normalize_space(str(method)) for method in ensure_list(frontmatter.get("methods")) if normalize_space(str(method))],
         "regions": [normalize_space(str(region)) for region in ensure_list(frontmatter.get("regions")) if normalize_space(str(region))],
+        "tags": tags,
+        "summary": normalize_space(" ".join(chunk for chunk in summary_chunks if chunk)),
+        "venue": normalize_space(str(frontmatter.get("venue") or "")),
+        "year": normalize_space(str(frontmatter.get("year") or "")),
         "journal_abbr": normalize_space(str(frontmatter.get("journal_abbr") or "")).lower(),
     }
 
@@ -1399,75 +1859,145 @@ def note_metadata_for_relations(note_path: Path) -> dict[str, Any]:
 def relation_signature(item: dict[str, Any]) -> dict[str, Any]:
     author_keys = {first_author_slug(author) for author in item["authors"] if first_author_slug(author)}
     keyword_tokens = set()
-    for field in item["keywords"] + item["topics"]:
+    for field in item["keywords"] + item["topics"] + item["tags"]:
         keyword_tokens.update(token for token in slugify(field).split("_") if len(token) >= 4 and token not in STOPWORDS)
     keyword_tokens |= significant_title_tokens(item["title"])
+    keyword_tokens |= significant_text_tokens(item["summary"], limit=18)
     return {
         "authors": author_keys,
         "regions": {slugify(region) for region in item["regions"]},
         "methods": {slugify(method) for method in item["methods"]},
         "tokens": keyword_tokens,
         "journal_abbr": item["journal_abbr"],
+        "collection": slugify(item["note_dir"]),
+        "year": item["year"],
     }
 
 
-def relation_score(a: dict[str, Any], b: dict[str, Any]) -> tuple[float, list[str]]:
+def relation_score(a: dict[str, Any], b: dict[str, Any]) -> tuple[float, list[str], bool]:
     sig_a = relation_signature(a)
     sig_b = relation_signature(b)
     reasons: list[str] = []
     score = 0.0
+    strong_signal = False
     shared_authors = sig_a["authors"] & sig_b["authors"]
     if shared_authors:
-        score += 1.6
+        score += 1.8
         reasons.append("shared author")
+        strong_signal = True
     shared_regions = sig_a["regions"] & sig_b["regions"]
     if shared_regions:
-        score += 1.1
+        score += 1.0
         reasons.extend(sorted(shared_regions)[:2])
+        strong_signal = True
     shared_methods = sig_a["methods"] & sig_b["methods"]
     if shared_methods:
         score += 0.8
         reasons.extend(sorted(shared_methods)[:2])
+        strong_signal = True
     shared_tokens = sorted((sig_a["tokens"] & sig_b["tokens"]) - STOPWORDS)
     if shared_tokens:
-        score += min(1.4, 0.28 * len(shared_tokens))
+        score += min(1.8, 0.22 * len(shared_tokens))
         reasons.extend(shared_tokens[:3])
+        if len(shared_tokens) >= 2:
+            strong_signal = True
     if sig_a["journal_abbr"] and sig_a["journal_abbr"] == sig_b["journal_abbr"]:
-        score += 0.35
-        reasons.append(sig_a["journal_abbr"])
-    return score, unique_preserve_order(reasons)
+        score += 0.2
+    if sig_a["collection"] == sig_b["collection"]:
+        score += 0.22
+    year_a = sig_a["year"]
+    year_b = sig_b["year"]
+    if year_a.isdigit() and year_b.isdigit() and abs(int(year_a) - int(year_b)) <= 3:
+        score += 0.08
+    return score, unique_preserve_order(reasons), strong_signal
 
 
-def note_link(spec: CollectionSpec, stem: str, title: str) -> str:
-    return f"[[{NOTES_FOLDER_NAME}/{spec.note_dir}/{stem}|{title}]]"
+def extract_related_bullets(body: str) -> list[str]:
+    bullets: list[str] = []
+    for heading in ["Related Papers", "Related Dissertations", "Related Articles", "Related Notes"]:
+        section = get_section(body, heading)
+        if not section:
+            continue
+        for line in section.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("- [["):
+                bullets.append(stripped)
+    return bullets
 
 
-def update_related_sections(spec: CollectionSpec) -> int:
-    note_paths = list_source_notes(spec.note_path)
-    note_items = {stem: note_metadata_for_relations(path) for stem, path in note_paths.items()}
+def related_bullet_key(line: str) -> str:
+    match = re.search(r"\[\[([^\]|]+)", line)
+    return match.group(1) if match else line
+
+
+def merge_related_bullets(existing: list[str], generated: list[str], limit: int = 8) -> str:
+    merged: list[str] = []
+    seen: set[str] = set()
+    for bullet in existing + generated:
+        key = related_bullet_key(bullet)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(bullet)
+        if len(merged) >= limit:
+            break
+    return "\n".join(merged) if merged else "- "
+
+
+def note_link(item: dict[str, Any]) -> str:
+    return f"[[{NOTES_FOLDER_NAME}/{item['note_dir']}/{item['stem']}|{item['title']}]]"
+
+
+def repair_all_note_links(collections: list[CollectionSpec]) -> int:
+    note_index = build_note_index(collections)
     updates = 0
-    for stem, item in note_items.items():
-        candidates: list[tuple[float, str, list[str]]] = []
-        for other_stem, other_item in note_items.items():
-            if other_stem == stem:
+    for spec in collections:
+        for note_path in list_source_notes(spec.note_path).values():
+            original = note_path.read_text(errors="ignore")
+            rebuilt = repair_note_links(original, note_index)
+            if rebuilt != original:
+                note_path.write_text(rebuilt)
+                updates += 1
+    return updates
+
+
+def update_related_sections(collections: list[CollectionSpec]) -> int:
+    note_paths: dict[str, Path] = {}
+    note_items: dict[str, dict[str, Any]] = {}
+    for spec in collections:
+        for stem, path in list_source_notes(spec.note_path).items():
+            note_id = f"{spec.note_dir}/{stem}"
+            note_paths[note_id] = path
+            note_items[note_id] = note_metadata_for_relations(path, spec)
+
+    updates = 0
+    for note_id, item in note_items.items():
+        candidates: list[tuple[float, int, str, list[str]]] = []
+        fallback: list[tuple[float, int, str, list[str]]] = []
+        for other_id, other_item in note_items.items():
+            if other_id == note_id:
                 continue
-            score, reasons = relation_score(item, other_item)
-            if score >= 1.2:
-                candidates.append((score, other_stem, reasons))
-        candidates.sort(key=lambda row: (-row[0], row[1]))
-        bullets: list[str] = []
-        for _, other_stem, reasons in candidates[:5]:
-            other_item = note_items[other_stem]
+            score, reasons, strong_signal = relation_score(item, other_item)
+            same_collection_rank = 0 if item["note_dir"] == other_item["note_dir"] else 1
+            if score >= 1.0 or (strong_signal and score >= 0.58) or (same_collection_rank == 0 and score >= 0.48):
+                candidates.append((score, same_collection_rank, other_id, reasons))
+            elif score >= 0.35 and (strong_signal or same_collection_rank == 0 or len(reasons) >= 2):
+                fallback.append((score, same_collection_rank, other_id, reasons))
+        ranked = candidates or fallback
+        ranked.sort(key=lambda row: (-row[0], row[1], row[2]))
+        generated: list[str] = []
+        for _, _, other_id, reasons in ranked[:6]:
+            other_item = note_items[other_id]
             reason_text = ", ".join(reason.replace("_", " ") for reason in reasons[:3])
             if reason_text:
-                bullets.append(f"- {note_link(spec, other_stem, other_item['title'])}  | shared: {reason_text}")
+                generated.append(f"- {note_link(other_item)}  | shared: {reason_text}")
             else:
-                bullets.append(f"- {note_link(spec, other_stem, other_item['title'])}")
-        body_text = "\n".join(bullets) if bullets else "- "
-        note_path = note_paths[stem]
+                generated.append(f"- {note_link(other_item)}")
+        note_path = note_paths[note_id]
         original = note_path.read_text(errors="ignore")
         frontmatter, body = parse_frontmatter(original)
-        updated_body = upsert_section(body, "Related Literature", body_text)
+        existing = extract_related_bullets(body)
+        updated_body = upsert_section(body, "Related Literature", merge_related_bullets(existing, generated))
         rebuilt = dump_frontmatter(frontmatter) + updated_body.rstrip() + "\n"
         if rebuilt != original:
             note_path.write_text(rebuilt)
@@ -1520,7 +2050,8 @@ def write_bibliography(spec: CollectionSpec) -> None:
                 "journal_abbr": frontmatter.get("journal_abbr") or "",
                 "doi": frontmatter.get("doi") or "",
                 "url": frontmatter.get("url") or "",
-                "entry_type": note_entry_type(frontmatter, spec.category),
+                "publisher": frontmatter.get("publisher") or "",
+                "entry_type": frontmatter.get("entry_type") or note_entry_type(frontmatter, spec.category),
             }
         else:
             metadata = {
@@ -1531,11 +2062,95 @@ def write_bibliography(spec: CollectionSpec) -> None:
                 "journal_abbr": "",
                 "doi": "",
                 "url": "",
+                "publisher": "",
                 "entry_type": note_entry_type({}, spec.category),
             }
         entries.append(build_bib_entry(pdf_path.stem, metadata, pdf_path, spec.category))
     spec.bib_path.parent.mkdir(parents=True, exist_ok=True)
     spec.bib_path.write_text("\n\n".join(entries) + "\n")
+
+
+def pending_journal_source_rows(collections: list[CollectionSpec]) -> list[dict[str, Any]]:
+    by_slug: dict[str, dict[str, Any]] = {}
+    for spec in collections:
+        for note_path in list_source_notes(spec.note_path).values():
+            frontmatter, _ = load_note(note_path)
+            venue = normalize_space(html.unescape(str(frontmatter.get("venue") or "")))
+            if not venue:
+                continue
+            entry_type = infer_entry_type(frontmatter, spec.category)
+            if entry_type != "article":
+                continue
+            slug = unknown_journal_slug(venue)
+            if not slug or slug in KNOWN_JOURNALS:
+                continue
+            source_tag = source_tag_slug(frontmatter, str(frontmatter.get("journal_abbr") or ""), spec.category)
+            if source_tag in KNOWN_JOURNALS:
+                continue
+            title_aliases = []
+            if venue.lower().startswith("the "):
+                title_aliases.append(venue[4:])
+            row = by_slug.setdefault(
+                slug,
+                {
+                    "code": suggested_source_code(venue),
+                    "display_name": venue,
+                    "openalex_source_id": "",
+                    "filename_slug": slug,
+                    "publisher": normalize_space(str(frontmatter.get("publisher") or "")),
+                    "publisher_domains": "",
+                    "title_aliases": "; ".join(title_aliases),
+                    "collections": set(),
+                    "note_count": 0,
+                    "sample_note": str(note_path),
+                    "updated": TODAY,
+                },
+            )
+            row["collections"].add(spec.category)
+            row["note_count"] += 1
+            if not row["publisher"]:
+                row["publisher"] = normalize_space(str(frontmatter.get("publisher") or ""))
+
+    rows: list[dict[str, Any]] = []
+    for slug, row in sorted(by_slug.items(), key=lambda item: item[0]):
+        rows.append(
+            {
+                "code": row["code"],
+                "display_name": row["display_name"],
+                "openalex_source_id": row["openalex_source_id"],
+                "filename_slug": row["filename_slug"],
+                "publisher": row["publisher"],
+                "publisher_domains": row["publisher_domains"],
+                "title_aliases": row["title_aliases"],
+                "collections": "; ".join(sorted(row["collections"])),
+                "note_count": str(row["note_count"]),
+                "sample_note": row["sample_note"],
+                "updated": row["updated"],
+            }
+        )
+    return rows
+
+
+def write_pending_journal_sources(collections: list[CollectionSpec]) -> Path:
+    rows = pending_journal_source_rows(collections)
+    write_csv(
+        PENDING_JOURNAL_SOURCES_PATH,
+        rows,
+        [
+            "code",
+            "display_name",
+            "openalex_source_id",
+            "filename_slug",
+            "publisher",
+            "publisher_domains",
+            "title_aliases",
+            "collections",
+            "note_count",
+            "sample_note",
+            "updated",
+        ],
+    )
+    return PENDING_JOURNAL_SOURCES_PATH
 
 
 def write_csv(path: Path, rows: list[dict[str, Any]], fieldnames: list[str]) -> None:
@@ -1553,11 +2168,12 @@ def normalize_pdf_filenames(
     folder_map: dict[str, str],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, list[str]]]:
     note_paths = list_source_notes(spec.note_path)
+    pre_archive_rows, pre_review_rows, alias_map = archive_identical_folder_duplicates(spec, note_paths)
+    note_paths = list_source_notes(spec.note_path)
     hash_cache: dict[Path, str] = {}
     rename_rows: list[dict[str, Any]] = []
-    archive_rows: list[dict[str, Any]] = []
-    review_rows: list[dict[str, Any]] = []
-    alias_map: dict[str, list[str]] = {}
+    archive_rows: list[dict[str, Any]] = list(pre_archive_rows)
+    review_rows: list[dict[str, Any]] = list(pre_review_rows)
 
     pdf_paths = sorted(
         spec.pdf_path.glob("*.pdf"),
@@ -1584,6 +2200,7 @@ def normalize_pdf_filenames(
             metadata = resolver.resolve_metadata(pdf_path, spec, note_data)
         else:
             metadata = resolver.normalize_note_metadata(note_data or {}, spec.category)
+        metadata["category"] = spec.category
         desired_stem = build_desired_stem(pdf_path.stem, metadata)
         desired_path = spec.pdf_path / f"{desired_stem}.pdf"
         current_stem = pdf_path.stem
@@ -1657,6 +2274,7 @@ def sync_collection(spec: CollectionSpec, resolver: MetadataResolver, folder_map
             if old_note.exists() and old_note != new_note:
                 merge_note_files(new_note, old_note, new_stem, old_stem)
 
+    collapse_orphaned_duplicate_notes(spec)
     note_paths = list_source_notes(spec.note_path)
     created_notes = 0
     updated_notes = 0
@@ -1684,7 +2302,6 @@ def sync_collection(spec: CollectionSpec, resolver: MetadataResolver, folder_map
                 refresh_note_file(new_note_path, pdf_path, spec, metadata, folder_map, current_aliases)
             created_notes += 1
 
-    related_updates = update_related_sections(spec)
     write_bibliography(spec)
 
     note_paths = list_source_notes(spec.note_path)
@@ -1704,7 +2321,7 @@ def sync_collection(spec: CollectionSpec, resolver: MetadataResolver, folder_map
         "note_count": len(note_paths),
         "created_notes": created_notes,
         "updated_notes": updated_notes,
-        "related_updates": related_updates,
+        "related_updates": 0,
         "metadata_review_count": metadata_review_count,
         "rename_rows": rename_rows,
         "archive_rows": archive_rows,
@@ -1766,6 +2383,10 @@ def main() -> None:
             f"review={summary['metadata_review_count']}"
         )
 
+    repaired_note_links = repair_all_note_links(collections)
+    related_updates = update_related_sections(collections)
+    pending_sources_path = write_pending_journal_sources(collections)
+
     write_csv(
         REPORT_ROOT / "literature_pdf_rename_manifest.csv",
         rename_rows,
@@ -1787,6 +2408,9 @@ def main() -> None:
     print(f"Renamed PDFs: {len(rename_rows)}")
     print(f"Archived duplicate PDFs: {len(archive_rows)}")
     print(f"Duplicate review items: {len(review_rows)}")
+    print(f"Repaired note links: {repaired_note_links}")
+    print(f"Updated related sections: {related_updates}")
+    print(f"Pending journal source queue: {pending_sources_path}")
 
 
 if __name__ == "__main__":

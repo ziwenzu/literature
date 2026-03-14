@@ -44,6 +44,8 @@ SOURCES = [
     Source("BJPS", "British Journal of Political Science", "S95691132", "bjps"),
     Source("PSRM", "Political Science Research and Methods", "S2764571748", "psrm"),
     Source("CPS", "Comparative Political Studies", "S105556297", "cps"),
+    Source("CQ", "The China Quarterly", "S12189451", "cq"),
+    Source("JCC", "Journal of Contemporary China", "S102994345", "jcc"),
     Source("EJ", "The Economic Journal", "S45992627", "ej"),
     Source("JPE", "Journal of Political Economy", "S95323914", "jpe"),
     Source(

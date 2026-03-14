@@ -49,6 +49,12 @@ html_request_delay_seconds = 1.0
 request_jitter_seconds = 0.2
 anti_bot_backoff_seconds = 20.0
 
+# If the vault sync script discovers article venues not yet in the built-in list,
+# it writes them into `_Preprocess/crawler_next_journals.csv`.
+# The scraper will read that queue by default on the next run.
+include_pending_sources = true
+# pending_sources_path = "/absolute/path/to/crawler_next_journals.csv"
+
 # Optional local CSVs exported from Publish or Perish / Scholar tooling.
 # scholar_csv_paths = ["/absolute/path/to/google_scholar_export.csv"]
 

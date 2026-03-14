@@ -26,6 +26,8 @@ from urllib3.util.retry import Retry
 
 
 ROOT = Path("/Users/ziwenzu/Library/CloudStorage/Dropbox")
+SCRIPT_DIR = Path(__file__).resolve().parent
+PENDING_SOURCES_PATH = SCRIPT_DIR / "crawler_next_journals.csv"
 USER_AGENT = "Mozilla/5.0 (compatible; Codex/1.0; +mailto:codex@example.com)"
 REQUEST_HEADERS = {"User-Agent": USER_AGENT}
 
@@ -73,6 +75,23 @@ DEFAULT_SOURCES = [
         "cps",
         publisher="SAGE",
         publisher_domains=("journals.sagepub.com",),
+    ),
+    Source(
+        "CQ",
+        "The China Quarterly",
+        "S12189451",
+        "cq",
+        publisher="Cambridge University Press",
+        publisher_domains=("cambridge.org", "jstor.org"),
+        title_aliases=("China Quarterly",),
+    ),
+    Source(
+        "JCC",
+        "Journal of Contemporary China",
+        "S102994345",
+        "jcc",
+        publisher="Taylor & Francis",
+        publisher_domains=("tandfonline.com",),
     ),
     Source(
         "WP",
@@ -412,6 +431,55 @@ def source_matches_title(source: Source, title: str) -> bool:
     return normalized in {normalize_title(value) for value in source_titles(source)}
 
 
+def load_pending_sources(path: Path) -> list[Source]:
+    if not path.exists():
+        return []
+    with path.open(newline="", encoding="utf-8-sig") as handle:
+        reader = csv.DictReader(handle)
+        rows = list(reader)
+    sources: list[Source] = []
+    for row in rows:
+        display_name = str(row.get("display_name") or "").strip()
+        filename_slug = str(row.get("filename_slug") or "").strip()
+        code = str(row.get("code") or "").strip()
+        if not display_name or not filename_slug or not code:
+            continue
+        publisher_domains = tuple(
+            value.strip()
+            for value in str(row.get("publisher_domains") or "").split(";")
+            if value.strip()
+        )
+        title_aliases = tuple(
+            value.strip()
+            for value in str(row.get("title_aliases") or "").split(";")
+            if value.strip()
+        )
+        sources.append(
+            Source(
+                code,
+                display_name,
+                str(row.get("openalex_source_id") or "").strip(),
+                filename_slug,
+                str(row.get("publisher") or "").strip(),
+                publisher_domains,
+                title_aliases,
+            )
+        )
+    return sources
+
+
+def merge_source_lists(primary: list[Source], extra: list[Source]) -> list[Source]:
+    merged: list[Source] = []
+    seen: set[tuple[str, str]] = set()
+    for source in primary + extra:
+        key = (source.filename_slug.lower(), normalize_title(source.display_name))
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(source)
+    return merged
+
+
 def merge_sets(existing_value: object, new_values: Iterable[str]) -> set[str]:
     result = set(existing_value) if isinstance(existing_value, (set, list, tuple)) else set()
     result.update(value for value in new_values if value)
@@ -537,6 +605,11 @@ def load_config(config_path: Path | None, overrides: dict | None = None) -> dict
     if not output_dir.is_absolute():
         output_dir = ROOT / output_dir
 
+    pending_sources_path = Path(raw.get("pending_sources_path", PENDING_SOURCES_PATH))
+    if not pending_sources_path.is_absolute():
+        pending_sources_path = ROOT / pending_sources_path
+    include_pending_sources = raw.get("include_pending_sources", True)
+
     journals = raw.get("journals")
     if journals:
         sources = [
@@ -553,6 +626,8 @@ def load_config(config_path: Path | None, overrides: dict | None = None) -> dict
         ]
     else:
         sources = DEFAULT_SOURCES
+        if include_pending_sources:
+            sources = merge_source_lists(sources, load_pending_sources(pending_sources_path))
 
     review_patterns = compile_patterns(
         raw.get("review_title_patterns", DEFAULT_REVIEW_PATTERNS)
@@ -585,6 +660,8 @@ def load_config(config_path: Path | None, overrides: dict | None = None) -> dict
         "html_request_delay_seconds": raw.get("html_request_delay_seconds", 1.0),
         "request_jitter_seconds": raw.get("request_jitter_seconds", 0.2),
         "anti_bot_backoff_seconds": raw.get("anti_bot_backoff_seconds", 20.0),
+        "include_pending_sources": include_pending_sources,
+        "pending_sources_path": str(pending_sources_path),
         "sources": sources,
         "review_patterns": review_patterns,
         "abstract_exclude_patterns": abstract_exclude_patterns,
@@ -866,38 +943,41 @@ def fetch_candidates(config: dict) -> list[dict]:
         print(f"[discover] {source.display_name}")
 
         if "openalex" in config["discovery_providers"]:
-            for query in config["search_queries"]:
-                for strategy in config["openalex_discovery_strategies"]:
-                    page = 1
-                    seen_this_query = 0
-                    while True:
-                        params = {
-                            "filter": build_filter(source, strategy, query, config["year_cutoff"]),
-                            "per-page": 200,
-                            "page": page,
-                        }
-                        if strategy == "search":
-                            params["search"] = query
-                        payload = api_get_json(session, "https://api.openalex.org/works", config, params=params)
-                        results = payload.get("results") or []
-                        if not results:
-                            break
+            if not source.openalex_source_id:
+                print("  - openalex skipped: pending source id")
+            else:
+                for query in config["search_queries"]:
+                    for strategy in config["openalex_discovery_strategies"]:
+                        page = 1
+                        seen_this_query = 0
+                        while True:
+                            params = {
+                                "filter": build_filter(source, strategy, query, config["year_cutoff"]),
+                                "per-page": 200,
+                                "page": page,
+                            }
+                            if strategy == "search":
+                                params["search"] = query
+                            payload = api_get_json(session, "https://api.openalex.org/works", config, params=params)
+                            results = payload.get("results") or []
+                            if not results:
+                                break
 
-                        for item in results:
-                            matched_terms, matched_fields = evaluate_match(item, config, keyword_rules)
-                            if not matched_terms:
-                                continue
-                            store_candidate(candidates, item, source, matched_terms, matched_fields, query, strategy, "openalex")
-                            seen_this_query += 1
+                            for item in results:
+                                matched_terms, matched_fields = evaluate_match(item, config, keyword_rules)
+                                if not matched_terms:
+                                    continue
+                                store_candidate(candidates, item, source, matched_terms, matched_fields, query, strategy, "openalex")
+                                seen_this_query += 1
 
-                        total = (payload.get("meta") or {}).get("count", 0)
-                        if page * 200 >= total:
-                            break
-                        page += 1
+                            total = (payload.get("meta") or {}).get("count", 0)
+                            if page * 200 >= total:
+                                break
+                            page += 1
+                            time.sleep(config["api_request_delay_seconds"])
+
+                        print(f"  - {query} [openalex:{strategy}]: {seen_this_query} candidate hits")
                         time.sleep(config["api_request_delay_seconds"])
-
-                    print(f"  - {query} [openalex:{strategy}]: {seen_this_query} candidate hits")
-                    time.sleep(config["api_request_delay_seconds"])
 
         if "crossref" in config["discovery_providers"]:
             for query in config["search_queries"]:
