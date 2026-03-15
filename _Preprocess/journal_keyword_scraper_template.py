@@ -77,6 +77,22 @@ DEFAULT_SOURCES = [
         publisher_domains=("journals.sagepub.com",),
     ),
     Source(
+        "QJPS",
+        "Quarterly Journal of Political Science",
+        "S44648735",
+        "qjps",
+        publisher="Now Publishers",
+        publisher_domains=("nowpublishers.com",),
+    ),
+    Source(
+        "JEPS",
+        "Journal of Experimental Political Science",
+        "S4210184980",
+        "jeps",
+        publisher="Cambridge University Press",
+        publisher_domains=("cambridge.org",),
+    ),
+    Source(
         "CQ",
         "The China Quarterly",
         "S12189451",

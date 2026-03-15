@@ -79,9 +79,11 @@ abstract_exclude_patterns = [
 
 # Optional: override the built-in journal set by uncommenting and editing.
 # The default built-in set already includes:
-# APSR, AJPS, JOP, CPS, World Politics, International Organization, BJPS, PSRM,
-# AER, AEJ journals, JPE, Journal of Public Economics, JDE, Econometrica,
-# QJE, Review of Economic Studies, Review of Economics and Statistics, JEEA,
+# APSR, AJPS, JOP, CPS, Quarterly Journal of Political Science,
+# Journal of Experimental Political Science, World Politics,
+# International Organization, BJPS, PSRM, AER, AEJ journals, JPE,
+# Journal of Public Economics, JDE, Econometrica, QJE, Review of
+# Economic Studies, Review of Economics and Statistics, JEEA,
 # Economic Journal, and ARPS.
 
 # [[journals]]

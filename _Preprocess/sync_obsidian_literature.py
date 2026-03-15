@@ -17,7 +17,6 @@ from typing import Any
 
 import requests
 import yaml
-from pypdf import PdfReader
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -173,6 +172,14 @@ COUNTRY_PATTERNS = {
 }
 
 METHOD_PATTERNS = {
+    "audit experiment": [
+        r"\baudit experiment(?:s)?\b",
+        r"\baudit stud(?:y|ies)\b",
+    ],
+    "correspondence study": [
+        r"\bcorrespondence (?:study|studies|experiment|experiments|test|tests)\b",
+        r"\bemail[- ]based audit experiment\b",
+    ],
     "field experiment": [r"\bfield experiment\b", r"\brandomized field\b"],
     "survey experiment": [r"\bsurvey experiment\b"],
     "natural experiment": [r"\bnatural experiment\b"],
@@ -219,7 +226,9 @@ KNOWN_JOURNALS = {
     "lsr": "Law & Society Review",
     "polcomm": "Political Communication",
     "psrm": "Political Science Research and Methods",
+    "qjps": "Quarterly Journal of Political Science",
     "qje": "Quarterly Journal of Economics",
+    "jeps": "Journal of Experimental Political Science",
     "restat": "The Review of Economics and Statistics",
     "restud": "Review of Economic Studies",
     "wpol": "World Politics",
@@ -298,6 +307,33 @@ BOILERPLATE_PATTERNS = [
         r"^department of",
     ]
 ]
+
+AUDIT_TAG_PATTERNS = {
+    "audit-study": [
+        r"\baudit experiment(?:s)?\b",
+        r"\baudit stud(?:y|ies)\b",
+    ],
+    "correspondence-study": [
+        r"\bcorrespondence (?:study|studies|experiment|experiments|test|tests)\b",
+        r"\bemail correspondence study\b",
+        r"\bemail[- ]based audit experiment\b",
+    ],
+}
+
+LEGACY_NOTE_REDIRECTS = {
+    "Developing Country Bureaucracy and Accountability": {
+        "zeitlin_2017_misc": "leaver_2021_aer",
+    },
+    "Lawyers and Courts": {
+        "ginsburg_2009_misc": "ginsburg_2008_book",
+        "guo_2016_misc": "pils_2015_book",
+    },
+    "Method": {
+        "fu_2024_misc": "fu_2025_wp",
+        "xia_2026_expert_systems_with_applications": "xia_2026_wp",
+        "zhang_2026_misc": "zhang_2026_wp",
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -653,10 +689,20 @@ def extract_doi(*chunks: str) -> str:
 
 def title_from_pdf_metadata(pdf_path: Path) -> tuple[str, str]:
     try:
-        reader = PdfReader(str(pdf_path))
-        metadata = reader.metadata or {}
-        title = normalize_space(str(metadata.get("/Title") or ""))
-        author = normalize_space(str(metadata.get("/Author") or ""))
+        proc = subprocess.run(
+            ["pdfinfo", str(pdf_path)],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=12,
+        )
+        title = ""
+        author = ""
+        for line in proc.stdout.splitlines():
+            if line.startswith("Title:"):
+                title = normalize_space(line.split(":", 1)[1])
+            elif line.startswith("Author:"):
+                author = normalize_space(line.split(":", 1)[1])
         return title, author
     except Exception:
         return "", ""
@@ -824,7 +870,9 @@ def infer_journal_abbr(venue: str, fallback: str = "") -> str:
         ("journal of the european economic association", "jeea"),
         ("the economic journal", "ej"),
         ("econometrica", "ecma"),
+        ("quarterly journal of political science", "qjps"),
         ("quarterly journal of economics", "qje"),
+        ("journal of experimental political science", "jeps"),
         ("british journal of political science", "bjps"),
         ("comparative political studies", "cps"),
         ("world politics", "wpol"),
@@ -1000,6 +1048,17 @@ def infer_methods(*chunks: str) -> list[str]:
         if any(re.search(pattern, combined) for pattern in patterns):
             methods.append(label)
     return methods
+
+
+def infer_audit_tags(*chunks: str) -> list[str]:
+    combined = " ".join(chunk for chunk in chunks if chunk)
+    tags: list[str] = []
+    for label, patterns in AUDIT_TAG_PATTERNS.items():
+        if any(re.search(pattern, combined, re.IGNORECASE) for pattern in patterns):
+            tags.append(label)
+    if tags:
+        tags.insert(0, "audit-correspondence")
+    return unique_preserve_order(tags)
 
 
 def significant_title_tokens(title: str) -> set[str]:
@@ -1246,6 +1305,7 @@ class MetadataResolver:
         pdf_title, pdf_author = title_from_pdf_metadata(pdf_path)
         extracted_abstract = extract_abstract_from_text(text)
         note_meta = self.normalize_note_metadata(note_data or {}, spec.category) if note_data else {}
+        preserve_wp_note_metadata = parsed["abbr"] == "wp" and bool(note_meta.get("title")) and bool(note_meta.get("authors"))
 
         doi_candidates = unique_preserve_order(
             [
@@ -1262,6 +1322,31 @@ class MetadataResolver:
                 if not meta.get("abstract"):
                     meta["abstract"] = extracted_abstract
                 return meta
+
+        if preserve_wp_note_metadata:
+            title = normalize_space(str(note_meta.get("title") or "")) or (
+                pdf_title if is_plausible_title(pdf_title) else title_from_text(text)
+            )
+            if not title:
+                title = normalize_space(pdf_path.stem.replace("_", " "))
+            metadata = {
+                "title": title,
+                "authors": note_meta.get("authors") or ([pdf_author] if normalize_space(pdf_author) else []),
+                "year": normalize_space(str(note_meta.get("year") or parsed["year"])),
+                "venue": normalize_space(str(note_meta.get("venue") or self.abbr_map.get(parsed["abbr"], ""))),
+                "journal_abbr": canonical_journal_abbr(str(note_meta.get("journal_abbr") or parsed["abbr"]), str(note_meta.get("venue") or "")),
+                "doi": normalize_space(str(note_meta.get("doi") or "")),
+                "url": normalize_space(str(note_meta.get("url") or "")),
+                "abstract": extracted_abstract,
+                "volume": "",
+                "issue": "",
+                "pages": "",
+                "publisher": normalize_space(str(note_meta.get("publisher") or "")),
+                "note": "Working paper metadata preserved from local note.",
+                "source": "fallback",
+            }
+            metadata["entry_type"] = infer_entry_type(metadata, spec.category)
+            return metadata
 
         title_candidates = unique_preserve_order(
             [
@@ -1305,13 +1390,13 @@ class MetadataResolver:
             "year": year,
             "venue": venue,
             "journal_abbr": abbr,
-            "doi": "",
-            "url": "",
+            "doi": normalize_space(str(note_meta.get("doi") or "")),
+            "url": normalize_space(str(note_meta.get("url") or "")),
             "abstract": extracted_abstract,
             "volume": "",
             "issue": "",
             "pages": "",
-            "publisher": "",
+            "publisher": normalize_space(str(note_meta.get("publisher") or "")),
             "note": "Metadata inferred from local PDF; review recommended.",
             "source": "fallback",
         }
@@ -1536,6 +1621,128 @@ def collapse_orphaned_duplicate_notes(spec: CollectionSpec) -> int:
     return collapsed
 
 
+def matching_pdf_stems_for_orphan(stem: str, pdf_stems: set[str]) -> list[str]:
+    parsed = parse_stem(stem)
+    candidates: list[str] = []
+    for candidate in sorted(pdf_stems):
+        candidate_parsed = parse_stem(candidate)
+        if parsed["author"] and candidate_parsed["author"] != parsed["author"]:
+            continue
+        if parsed["year"] and candidate_parsed["year"] != parsed["year"]:
+            continue
+        candidates.append(candidate)
+    return candidates
+
+
+def collapse_orphaned_renamed_notes(spec: CollectionSpec) -> int:
+    pdf_stems = {pdf_path.stem for pdf_path in spec.pdf_path.glob("*.pdf")}
+    note_paths = list_source_notes(spec.note_path)
+    collapsed = 0
+    for stem, note_path in sorted(note_paths.items()):
+        if stem in pdf_stems:
+            continue
+        candidates = matching_pdf_stems_for_orphan(stem, pdf_stems)
+        if len(candidates) != 1:
+            continue
+        target_stem = candidates[0]
+        if target_stem == stem:
+            continue
+        frontmatter, _ = load_note(note_path)
+        orphan_title = normalize_title(str(frontmatter.get("title") or ""))
+        orphan_doi = normalize_space(str(frontmatter.get("doi") or "")).lower()
+        target_path = spec.note_path / f"{target_stem}.md"
+        title_match = False
+        doi_match = False
+        if target_path.exists():
+            target_frontmatter, _ = load_note(target_path)
+            target_title = normalize_title(str(target_frontmatter.get("title") or ""))
+            target_doi = normalize_space(str(target_frontmatter.get("doi") or "")).lower()
+            if orphan_doi and target_doi and orphan_doi == target_doi:
+                doi_match = True
+            if orphan_title and target_title and (
+                orphan_title == target_title or SequenceMatcher(None, orphan_title, target_title).ratio() >= 0.92
+            ):
+                title_match = True
+        else:
+            title_match = bool(orphan_title)
+        if not doi_match and not title_match:
+            continue
+        merge_note_files(target_path, note_path, target_stem, stem)
+        collapsed += 1
+    return collapsed
+
+
+def note_title_is_generic_stub(title: str) -> bool:
+    normalized = normalize_title(title)
+    if not normalized:
+        return True
+    if normalized in {"nber working paper series", "working paper series"}:
+        return True
+    lowered = title.lower()
+    if lowered.startswith("[renewcommand]") or "\\renewcommand" in lowered:
+        return True
+    letters = sum(ch.isalpha() for ch in title)
+    digits = sum(ch.isdigit() for ch in title)
+    upper = sum(ch.isupper() for ch in title if ch.isalpha())
+    tokens = re.findall(r"[A-Za-z0-9]+", title)
+    if digits and letters <= 12 and len(tokens) <= 3:
+        return True
+    if letters and upper / letters >= 0.7 and len(tokens) <= 3:
+        return True
+    return letters < 8
+
+
+def prune_orphaned_imported_stub_notes(spec: CollectionSpec) -> int:
+    pdf_stems = {pdf_path.stem for pdf_path in spec.pdf_path.glob("*.pdf")}
+    note_paths = list_source_notes(spec.note_path)
+    removed = 0
+    for stem, note_path in sorted(note_paths.items()):
+        if stem in pdf_stems:
+            continue
+        frontmatter, body = load_note(note_path)
+        status = normalize_space(str(frontmatter.get("status") or "")).lower()
+        if status != "imported-metadata":
+            continue
+        doi = normalize_space(str(frontmatter.get("doi") or "")).lower()
+        year = normalize_space(str(frontmatter.get("year") or ""))
+        venue = normalize_space(str(frontmatter.get("venue") or ""))
+        title = normalize_space(str(frontmatter.get("title") or ""))
+        if doi or venue or re.fullmatch(r"(19|20)\d{2}", year):
+            continue
+        if not note_title_is_generic_stub(title):
+            continue
+        if len(body.split()) > 500:
+            continue
+        note_path.unlink()
+        removed += 1
+    return removed
+
+
+def redirect_legacy_notes(spec: CollectionSpec) -> int:
+    redirects = LEGACY_NOTE_REDIRECTS.get(spec.category, {})
+    redirected = 0
+    for old_stem, new_stem in redirects.items():
+        old_path = spec.note_path / f"{old_stem}.md"
+        new_path = spec.note_path / f"{new_stem}.md"
+        if not old_path.exists():
+            continue
+        old_frontmatter, _ = load_note(old_path)
+        old_aliases = [str(alias) for alias in ensure_list(old_frontmatter.get("aliases"))]
+        if not new_path.exists():
+            old_path.rename(new_path)
+            new_frontmatter, new_body = load_note(new_path)
+            ensure_aliases(new_frontmatter, old_stem, new_stem, *old_aliases)
+            new_path.write_text(dump_frontmatter(new_frontmatter) + new_body.rstrip() + "\n")
+            redirected += 1
+            continue
+        new_frontmatter, new_body = load_note(new_path)
+        ensure_aliases(new_frontmatter, old_stem, new_stem, *old_aliases)
+        new_path.write_text(dump_frontmatter(new_frontmatter) + new_body.rstrip() + "\n")
+        old_path.unlink()
+        redirected += 1
+    return redirected
+
+
 def repair_pdf_links(text: str, folder_map: dict[str, str]) -> str:
     def repl(match: re.Match[str]) -> str:
         folder = match.group(1)
@@ -1659,6 +1866,9 @@ def merge_frontmatter(
     stem: str,
 ) -> dict[str, Any]:
     data = dict(frontmatter)
+    existing_tags = {normalize_space(str(tag)) for tag in ensure_list(frontmatter.get("tags")) if normalize_space(str(tag))}
+    status = normalize_space(str(frontmatter.get("status") or "")).lower()
+    prefer_metadata = status == "imported-metadata" or "metadata-review" in existing_tags
     title = normalize_space(str(data.get("title") or ""))
     resolved_title = normalize_space(str(metadata.get("title") or ""))
     if title_needs_replacement(title, stem) and resolved_title:
@@ -1667,13 +1877,18 @@ def merge_frontmatter(
     data["title"] = title or resolved_title or stem.replace("_", " ")
     ensure_aliases(data, stem)
     authors = [normalize_space(str(author)) for author in ensure_list(data.get("authors")) if normalize_space(str(author))]
-    if not authors:
-        authors = [normalize_space(str(author)) for author in metadata.get("authors") or [] if normalize_space(str(author))]
+    metadata_authors = [normalize_space(str(author)) for author in metadata.get("authors") or [] if normalize_space(str(author))]
+    if prefer_metadata and metadata_authors:
+        authors = metadata_authors
+    elif not authors:
+        authors = metadata_authors
     data["authors"] = authors
-    data["year"] = coerce_year(data.get("year") or metadata.get("year") or "")
-    venue = normalize_space(str(data.get("venue") or metadata.get("venue") or ""))
+    data["year"] = coerce_year((metadata.get("year") if prefer_metadata else data.get("year")) or data.get("year") or metadata.get("year") or "")
+    venue = normalize_space(str((metadata.get("venue") if prefer_metadata else data.get("venue")) or data.get("venue") or metadata.get("venue") or ""))
     data["venue"] = venue
-    data["publisher"] = normalize_space(str(data.get("publisher") or metadata.get("publisher") or ""))
+    data["publisher"] = normalize_space(
+        str((metadata.get("publisher") if prefer_metadata else data.get("publisher")) or data.get("publisher") or metadata.get("publisher") or "")
+    )
     data["category"] = spec.category
     data["topics"] = ensure_list(data.get("topics"))
     data["keywords"] = ensure_list(data.get("keywords"))
@@ -1693,9 +1908,13 @@ def merge_frontmatter(
     data["priority"] = data.get("priority") or "medium"
     data["rating"] = data.get("rating", None)
     data["pdf_local"] = f"[[{spec.pdf_dir}/{pdf_name}]]"
-    doi = normalize_space(str(data.get("doi") or metadata.get("doi") or "")).lower()
+    doi = normalize_space(
+        str((metadata.get("doi") if prefer_metadata else data.get("doi")) or data.get("doi") or metadata.get("doi") or "")
+    ).lower()
     data["doi"] = doi
-    data["url"] = normalize_space(str(data.get("url") or metadata.get("url") or (f"https://doi.org/{doi}" if doi else "")))
+    data["url"] = normalize_space(
+        str((metadata.get("url") if prefer_metadata else data.get("url")) or data.get("url") or metadata.get("url") or (f"https://doi.org/{doi}" if doi else ""))
+    )
     data["zotero_key"] = normalize_space(str(data.get("zotero_key") or ""))
     data["date_added"] = data.get("date_added") or TODAY
     data["last_reviewed"] = TODAY
@@ -1723,6 +1942,15 @@ def merge_frontmatter(
         tags.append(str(data["journal_abbr"]))
     if note_entry_type(data, spec.category) == "article":
         tags.append("article")
+    tags.extend(
+        infer_audit_tags(
+            data["title"],
+            str(metadata.get("abstract") or ""),
+            " ".join(data["methods"]),
+            " ".join(str(item) for item in ensure_list(data.get("keywords"))),
+            " ".join(str(item) for item in ensure_list(data.get("topics"))),
+        )
+    )
     tags = unique_preserve_order(tags)
     review_needed = metadata.get("source") == "fallback" or not data["title"] or (not data["authors"] and not data["venue"])
     if review_needed and "metadata-review" not in tags:
@@ -2265,6 +2493,7 @@ def normalize_pdf_filenames(
 def sync_collection(spec: CollectionSpec, resolver: MetadataResolver, folder_map: dict[str, str]) -> dict[str, Any]:
     spec.note_path.mkdir(parents=True, exist_ok=True)
     rename_rows, archive_rows, review_rows, alias_map = normalize_pdf_filenames(spec, resolver, folder_map)
+    redirect_legacy_notes(spec)
 
     note_paths = list_source_notes(spec.note_path)
     for new_stem, aliases in alias_map.items():
@@ -2275,6 +2504,8 @@ def sync_collection(spec: CollectionSpec, resolver: MetadataResolver, folder_map
                 merge_note_files(new_note, old_note, new_stem, old_stem)
 
     collapse_orphaned_duplicate_notes(spec)
+    collapse_orphaned_renamed_notes(spec)
+    prune_orphaned_imported_stub_notes(spec)
     note_paths = list_source_notes(spec.note_path)
     created_notes = 0
     updated_notes = 0
