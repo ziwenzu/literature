@@ -302,6 +302,8 @@ BOILERPLATE_PATTERNS = [
         r"^this pdf is a selection from",
         r"^terms of use:",
         r"^copyright",
+        r"^downloaded from .*annualreviews\.org",
+        r"^guest \(guest\) ip:",
         r"^published by",
         r"^working paper",
         r"^department of",
@@ -2234,33 +2236,9 @@ def update_related_sections(collections: list[CollectionSpec]) -> int:
 
 
 def write_folder_info(spec: CollectionSpec, pdf_count: int, note_count: int, review_count: int) -> None:
-    body = [
-        "---",
-        "type: folder-note",
-        f'title: "{spec.category}"',
-        f'collection: "{spec.category}"',
-        f'pdf_folder: "{spec.pdf_dir}"',
-        f'note_folder: "{spec.note_dir}"',
-        f"pdf_count: {pdf_count}",
-        f"reading_note_count: {note_count}",
-        f"metadata_review_count: {review_count}",
-        f'updated: "{TODAY}"',
-        "---",
-        f"# {spec.category}",
-        "",
-        "## Collection Snapshot",
-        f"- PDF folder: `{spec.pdf_dir}`",
-        f"- Notes folder: `{NOTES_FOLDER_NAME}/{spec.note_dir}`",
-        f"- Bibliography: `{REFERENCE_ROOT.name}/{spec.bib_name}`",
-        f"- PDFs: {pdf_count}",
-        f"- Notes: {note_count}",
-        f"- Metadata-review notes: {review_count}",
-        "",
-        "## Notes",
-        "- This file is a folder-level index for the synced collection.",
-        "",
-    ]
-    (spec.pdf_path / "_folder_info.md").write_text("\n".join(body))
+    folder_info_path = spec.pdf_path / "_folder_info.md"
+    if folder_info_path.exists():
+        folder_info_path.unlink()
 
 
 def write_bibliography(spec: CollectionSpec) -> None:
