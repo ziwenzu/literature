@@ -134,6 +134,14 @@ DEFAULT_SOURCES = [
         publisher_domains=("cambridge.org", "jstor.org"),
     ),
     Source(
+        "PAN",
+        "Political Analysis",
+        "S29331042",
+        "pan",
+        publisher="Cambridge University Press",
+        publisher_domains=("cambridge.org", "academic.oup.com", "oup.com", "oxfordjournals.org"),
+    ),
+    Source(
         "PSRM",
         "Political Science Research and Methods",
         "S2764571748",
