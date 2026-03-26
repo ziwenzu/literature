@@ -211,15 +211,30 @@ KNOWN_JOURNALS = {
     "arlss": "Annual Review of Law and Social Science",
     "arps": "Annual Review of Political Science",
     "bjps": "British Journal of Political Science",
+    "bmgs": "Byzantine and Modern Greek Studies",
+    "cjls": "Canadian Journal of Law and Society / La Revue Canadienne Droit et Société",
     "cq": "The China Quarterly",
     "cps": "Comparative Political Studies",
     "ecma": "Econometrica",
+    "eeh": "Explorations in Economic History",
+    "ehdr": "Economic History of Developing Regions",
     "ej": "The Economic Journal",
+    "ejdr": "The European Journal of Development Research",
+    "hofstra": "Hofstra Law Review",
+    "imago": "Imago Mundi",
     "io": "International Organization",
+    "itinerario": "Itinerario",
     "jde": "Journal of Development Economics",
     "jeh": "The Journal of Economic History",
+    "jeg": "Journal of Economic Geography",
+    "jgh": "Journal of Global History",
+    "ijpor": "International Journal of Public Opinion Research",
+    "jas": "The Journal of Asian Studies",
     "jcc": "Journal of Contemporary China",
+    "jcr": "Journal of Conflict Resolution",
     "jeea": "Journal of the European Economic Association",
+    "jpopecon": "Journal of Population Economics",
+    "jrs": "Journal of Regional Science",
     "jue": "Journal of Urban Economics",
     "jlc": "Journal of Law and Courts",
     "jop": "The Journal of Politics",
@@ -230,9 +245,11 @@ KNOWN_JOURNALS = {
     "lsi": "Law & Social Inquiry",
     "lsr": "Law & Society Review",
     "pan": "Political Analysis",
+    "polgeo": "Political Geography",
     "polbeh": "Political Behavior",
     "polcomm": "Political Communication",
     "poq": "Public Opinion Quarterly",
+    "polgender": "Politics & Gender",
     "psrm": "Political Science Research and Methods",
     "qjps": "Quarterly Journal of Political Science",
     "qje": "Quarterly Journal of Economics",
@@ -240,6 +257,9 @@ KNOWN_JOURNALS = {
     "arecon": "Annual Review of Economics",
     "restat": "The Review of Economics and Statistics",
     "restud": "Review of Economic Studies",
+    "rsue": "Regional Science and Urban Economics",
+    "rte": "Research in Transportation Economics",
+    "ssh": "Social Science History",
     "wpol": "World Politics",
 }
 
@@ -375,7 +395,14 @@ LOCAL_VENUE_ALIASES = {
     "journal of contemporary china": "jcc",
     "world politics": "wpol",
     "international organization": "io",
+    "canadian journal of law and society": "cjls",
+    "canadian journal of law and society / la revue canadienne droit et societe": "cjls",
+    "la revue canadienne droit et societe": "cjls",
+    "hofstra law review": "hofstra",
+    "the journal of asian studies": "jas",
+    "journal of asian studies": "jas",
     "political analysis": "pan",
+    "political geography": "polgeo",
     "political behavior": "polbeh",
     "political science research and methods": "psrm",
     "public opinion quarterly": "poq",
@@ -390,6 +417,11 @@ LOCAL_VENUE_ALIASES = {
     "journal of political economy": "jpe",
     "journal of public economics": "jpubeco",
     "journal of development economics": "jde",
+    "journal of regional science": "jrs",
+    "journal of population economics": "jpopecon",
+    "journal of conflict resolution": "jcr",
+    "journal of global history": "jgh",
+    "journal of economic geography": "jeg",
     "econometrica": "ecma",
     "the quarterly journal of economics": "qje",
     "quarterly journal of economics": "qje",
@@ -400,13 +432,25 @@ LOCAL_VENUE_ALIASES = {
     "journal of the european economic association": "jeea",
     "the economic journal": "ej",
     "economic journal": "ej",
+    "explorations in economic history": "eeh",
+    "economic history of developing regions": "ehdr",
+    "the european journal of development research": "ejdr",
+    "european journal of development research": "ejdr",
+    "imago mundi": "imago",
+    "itinerario": "itinerario",
+    "regional science and urban economics": "rsue",
+    "research in transportation economics": "rte",
+    "social science history": "ssh",
+    "byzantine and modern greek studies": "bmgs",
 }
 
 DOI_JOURNAL_PATTERNS = [
     (re.compile(r"10\.1257/aer\.", re.IGNORECASE), "aer"),
     (re.compile(r"10\.1111/ajps\.", re.IGNORECASE), "ajps"),
     (re.compile(r"10\.1017/psrm\.", re.IGNORECASE), "psrm"),
+    (re.compile(r"10\.1017/s1743923x", re.IGNORECASE), "polgender"),
     (re.compile(r"10\.1093/jopart/", re.IGNORECASE), "jpart"),
+    (re.compile(r"10\.1093/ijpor/", re.IGNORECASE), "ijpor"),
     (re.compile(r"10\.1017/pan\.|10\.1093/pan/", re.IGNORECASE), "pan"),
     (re.compile(r"10\.1007/s11109-", re.IGNORECASE), "polbeh"),
     (re.compile(r"10\.1093/poq/", re.IGNORECASE), "poq"),
@@ -414,14 +458,32 @@ DOI_JOURNAL_PATTERNS = [
     (re.compile(r"10\.1017/s00030554", re.IGNORECASE), "apsr"),
     (re.compile(r"10\.1093/jeea/", re.IGNORECASE), "jeea"),
     (re.compile(r"10\.1016/j\.jde\.", re.IGNORECASE), "jde"),
+    (re.compile(r"10\.1016/j\.eeh\.", re.IGNORECASE), "eeh"),
     (re.compile(r"10\.1016/j\.jue\.", re.IGNORECASE), "jue"),
     (re.compile(r"10\.1016/j\.jpubeco\.", re.IGNORECASE), "jpubeco"),
+    (re.compile(r"10\.1016/j\.polgeo\.", re.IGNORECASE), "polgeo"),
+    (re.compile(r"10\.1016/j\.regsciurbeco\.", re.IGNORECASE), "rsue"),
+    (re.compile(r"10\.1016/j\.retrec\.", re.IGNORECASE), "rte"),
     (re.compile(r"10\.1017/s00220507", re.IGNORECASE), "jeh"),
+    (re.compile(r"10\.1017/s00208183", re.IGNORECASE), "io"),
+    (re.compile(r"10\.1017/s00219118", re.IGNORECASE), "jas"),
+    (re.compile(r"10\.1017/s01651153", re.IGNORECASE), "itinerario"),
+    (re.compile(r"10\.1017/s17400228", re.IGNORECASE), "jgh"),
+    (re.compile(r"10\.1017/ssh\.", re.IGNORECASE), "ssh"),
     (re.compile(r"10\.3982/ecta", re.IGNORECASE), "ecma"),
+    (re.compile(r"10\.1093/jeg/", re.IGNORECASE), "jeg"),
     (re.compile(r"10\.1111/ecoj\.|10\.1093/ej/", re.IGNORECASE), "ej"),
+    (re.compile(r"10\.1111/jors\.", re.IGNORECASE), "jrs"),
     (re.compile(r"10\.1146/annurev-economics", re.IGNORECASE), "arecon"),
     (re.compile(r"10\.1146/annurev-polisci", re.IGNORECASE), "arps"),
     (re.compile(r"10\.1111/ajps", re.IGNORECASE), "ajps"),
+    (re.compile(r"10\.1177/00220027", re.IGNORECASE), "jcr"),
+    (re.compile(r"10\.1179/byz\.", re.IGNORECASE), "bmgs"),
+    (re.compile(r"10\.3138/cjls\.", re.IGNORECASE), "cjls"),
+    (re.compile(r"10\.1007/s00148-", re.IGNORECASE), "jpopecon"),
+    (re.compile(r"10\.1080/03085694\.", re.IGNORECASE), "imago"),
+    (re.compile(r"10\.1080/09578819", re.IGNORECASE), "ejdr"),
+    (re.compile(r"10\.1080/20780389\.", re.IGNORECASE), "ehdr"),
 ]
 
 LOCAL_DOI_METADATA_OVERRIDES = {
@@ -620,6 +682,30 @@ LOCAL_DOI_METADATA_OVERRIDES = {
         "year": "2025",
         "venue": "World Bank Policy Research Working Paper",
         "journal_abbr": "wp",
+    },
+    "10.1146/annurev-polisci-052715111917": {
+        "title": "The Electoral Consequences of Corruption",
+        "authors": ["Catherine E. De Vries", "Hector Solaz"],
+        "year": "2017",
+        "venue": "Annual Review of Political Science",
+        "journal_abbr": "arps",
+        "doi": "10.1146/annurev-polisci-052715-111917",
+        "url": "https://doi.org/10.1146/annurev-polisci-052715-111917",
+        "volume": "20",
+        "pages": "391-408",
+        "publisher": "Annual Reviews",
+    },
+    "10.1146/annurev-polisci-052715-111917": {
+        "title": "The Electoral Consequences of Corruption",
+        "authors": ["Catherine E. De Vries", "Hector Solaz"],
+        "year": "2017",
+        "venue": "Annual Review of Political Science",
+        "journal_abbr": "arps",
+        "doi": "10.1146/annurev-polisci-052715-111917",
+        "url": "https://doi.org/10.1146/annurev-polisci-052715-111917",
+        "volume": "20",
+        "pages": "391-408",
+        "publisher": "Annual Reviews",
     },
 }
 AUDIT_TAG_PATTERNS = {
@@ -1287,6 +1373,8 @@ def infer_entry_type(metadata: dict[str, Any], collection_name: str) -> str:
     journal_abbr = infer_journal_abbr(venue, str(metadata.get("journal_abbr") or ""))
     if journal_abbr and journal_abbr in KNOWN_JOURNALS:
         return "article"
+    if entry_type == "article":
+        return "article"
     if working_paper_like(metadata):
         return "techreport"
     if book_like(metadata):
@@ -1321,6 +1409,8 @@ def classify_name_suffix(metadata: dict[str, Any], fallback_abbr: str, collectio
     if legacy_or_manual_abbr == "wp":
         return "wp"
 
+    if normalize_space(str(metadata.get("entry_type") or "")).lower() == "article" and venue:
+        return unknown_journal_slug(venue) or "misc"
     if working_paper_like(metadata):
         return "wp"
     if book_like(metadata):
@@ -1543,11 +1633,11 @@ class MetadataResolver:
             return None
 
     def metadata_from_crossref(self, message: dict[str, Any], default_abbr: str, collection_name: str) -> dict[str, Any]:
-        venue = normalize_space(((message.get("container-title") or [""])[0]))
+        venue = normalize_space(html.unescape(((message.get("container-title") or [""])[0])))
         doi = normalize_space(str(message.get("DOI") or "")).lower()
         abbr = infer_journal_abbr(venue, default_abbr)
         return {
-            "title": normalize_space(((message.get("title") or [""])[0])),
+            "title": normalize_space(html.unescape(((message.get("title") or [""])[0]))),
             "authors": author_list_from_crossref(message),
             "year": year_from_crossref(message),
             "venue": venue,
@@ -1558,14 +1648,16 @@ class MetadataResolver:
             "volume": normalize_space(str(message.get("volume") or "")),
             "issue": normalize_space(str(message.get("issue") or "")),
             "pages": normalize_pages(message),
-            "publisher": normalize_space(str(message.get("publisher") or "")),
+            "publisher": normalize_space(html.unescape(str(message.get("publisher") or ""))),
             "entry_type": entry_type_from_crossref(message, collection_name),
             "source": "crossref",
         }
 
     def metadata_from_openalex(self, item: dict[str, Any], default_abbr: str, collection_name: str) -> dict[str, Any]:
         doi = normalize_space(str(item.get("doi") or "")).replace("https://doi.org/", "").lower()
-        venue = normalize_space((((item.get("primary_location") or {}).get("source") or {}).get("display_name") or ""))
+        venue = normalize_space(
+            html.unescape((((item.get("primary_location") or {}).get("source") or {}).get("display_name") or ""))
+        )
         authors = [
             normalize_space(((author.get("author") or {}).get("display_name") or ""))
             for author in (item.get("authorships") or [])
@@ -1577,7 +1669,7 @@ class MetadataResolver:
         pages = f"{first_page}-{last_page}".strip("-") if first_page or last_page else ""
         abbr = infer_journal_abbr(venue, default_abbr)
         metadata = {
-            "title": normalize_space(str(item.get("display_name") or "")),
+            "title": normalize_space(html.unescape(str(item.get("display_name") or ""))),
             "authors": authors,
             "year": str(item.get("publication_year") or ""),
             "venue": venue,
@@ -1594,13 +1686,41 @@ class MetadataResolver:
         metadata["entry_type"] = infer_entry_type(metadata, collection_name)
         return metadata
 
+    def metadata_from_local_override(
+        self,
+        doi: str,
+        override: dict[str, Any],
+        extracted_abstract: str,
+        fallback_url: str,
+        collection_name: str,
+    ) -> dict[str, Any]:
+        venue = normalize_space(str(override.get("venue") or ""))
+        canonical_doi = normalize_space(str(override.get("doi") or doi)).lower()
+        metadata = {
+            "title": normalize_space(str(override.get("title") or "")),
+            "authors": [normalize_person_name(str(author)) for author in (override.get("authors") or []) if normalize_space(str(author))],
+            "year": normalize_space(str(override.get("year") or "")),
+            "venue": venue,
+            "journal_abbr": canonical_journal_abbr(str(override.get("journal_abbr") or ""), venue),
+            "doi": canonical_doi,
+            "url": normalize_space(str(override.get("url") or fallback_url or (f"https://doi.org/{canonical_doi}" if canonical_doi else ""))),
+            "abstract": extracted_abstract,
+            "volume": normalize_space(str(override.get("volume") or "")),
+            "issue": normalize_space(str(override.get("issue") or "")),
+            "pages": normalize_space(str(override.get("pages") or "")),
+            "publisher": normalize_space(str(override.get("publisher") or "")),
+            "source": "local-override",
+        }
+        metadata["entry_type"] = infer_entry_type(metadata, collection_name)
+        return metadata
+
     def normalize_note_metadata(self, data: dict[str, Any], collection_name: str) -> dict[str, Any]:
         authors = ensure_list(data.get("authors"))
         doi = normalize_space(str(data.get("doi") or "")).lower()
-        venue = normalize_space(str(data.get("venue") or ""))
+        venue = normalize_space(html.unescape(str(data.get("venue") or "")))
         abbr = infer_journal_abbr(venue, normalize_space(str(data.get("journal_abbr") or "")).lower())
         metadata = {
-            "title": normalize_space(str(data.get("title") or "")),
+            "title": normalize_space(html.unescape(str(data.get("title") or ""))),
             "authors": [normalize_space(str(author)) for author in authors if normalize_space(str(author))],
             "year": str(data.get("year") or ""),
             "venue": venue,
@@ -1611,7 +1731,7 @@ class MetadataResolver:
             "volume": "",
             "issue": "",
             "pages": "",
-            "publisher": normalize_space(str(data.get("publisher") or "")),
+            "publisher": normalize_space(html.unescape(str(data.get("publisher") or ""))),
             "source": "note",
         }
         metadata["entry_type"] = infer_entry_type(metadata, collection_name)
@@ -1768,6 +1888,10 @@ def build_abbr_map(collections: list[CollectionSpec]) -> dict[str, str]:
 def title_needs_replacement(title: str, stem: str) -> bool:
     normalized = normalize_space(title)
     if not normalized:
+        return True
+    if normalized.lower() == "untitled":
+        return True
+    if normalized.lower() in {"introduction", "preface", "editorial", "foreword"}:
         return True
     if "metadata unresolved" in normalized.lower():
         return True
@@ -2763,11 +2887,13 @@ def normalize_pdf_filenames(
             continue
         note_path = note_paths.get(pdf_path.stem)
         note_data = load_note(note_path)[0] if note_path and note_path.exists() else None
+        note_title = normalize_space(str((note_data or {}).get("title") or ""))
         should_resolve = (
             not looks_standardized_stem(strip_copy_suffix(pdf_path.stem))
             or bool(parse_stem(pdf_path.stem)["copy_suffix"])
             or note_path is None
             or note_is_stub(note_path)
+            or title_needs_replacement(note_title, pdf_path.stem)
         )
         if should_resolve:
             metadata = resolver.resolve_metadata(pdf_path, spec, note_data)
