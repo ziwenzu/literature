@@ -37,6 +37,8 @@ NOTES_FOLDER_NAME = NOTES_ROOT.name
 
 DOI_RE = re.compile(r"10\.\d{4,9}/[-._;()/:A-Za-z0-9]+", re.IGNORECASE)
 FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n?", re.DOTALL)
+NAME_WORD_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ]+")
+BIB_OMIT_FIELDS = {"doi", "file"}
 
 SYSTEM_DIR_NAMES = {
     ".git",
@@ -255,8 +257,10 @@ KNOWN_JOURNALS = {
     "qje": "Quarterly Journal of Economics",
     "jeps": "Journal of Experimental Political Science",
     "arecon": "Annual Review of Economics",
+    "arpsych": "Annual Review of Psychology",
     "restat": "The Review of Economics and Statistics",
     "restud": "Review of Economic Studies",
+    "arsoc": "Annual Review of Sociology",
     "rsue": "Regional Science and Urban Economics",
     "rte": "Research in Transportation Economics",
     "ssh": "Social Science History",
@@ -407,7 +411,9 @@ LOCAL_VENUE_ALIASES = {
     "political science research and methods": "psrm",
     "public opinion quarterly": "poq",
     "annual review of political science": "arps",
+    "annual review of psychology": "arpsych",
     "annual review of economics": "arecon",
+    "annual review of sociology": "arsoc",
     "annurev polisci": "arps",
     "american economic review": "aer",
     "american economic journal applied economics": "aejapplied",
@@ -476,6 +482,8 @@ DOI_JOURNAL_PATTERNS = [
     (re.compile(r"10\.1111/jors\.", re.IGNORECASE), "jrs"),
     (re.compile(r"10\.1146/annurev-economics", re.IGNORECASE), "arecon"),
     (re.compile(r"10\.1146/annurev-polisci", re.IGNORECASE), "arps"),
+    (re.compile(r"10\.1146/annurev-psych", re.IGNORECASE), "arpsych"),
+    (re.compile(r"10\.1146/annurev-soc|10\.1146/annurev\.soc", re.IGNORECASE), "arsoc"),
     (re.compile(r"10\.1111/ajps", re.IGNORECASE), "ajps"),
     (re.compile(r"10\.1177/00220027", re.IGNORECASE), "jcr"),
     (re.compile(r"10\.1179/byz\.", re.IGNORECASE), "bmgs"),
@@ -806,6 +814,82 @@ def normalize_space(text: str) -> str:
 def normalize_title(text: str) -> str:
     text = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode("ascii")
     return re.sub(r"[^A-Za-z0-9]+", " ", text).strip().lower()
+
+
+def normalize_person_name(text: str) -> str:
+    return normalize_space(html.unescape(text))
+
+
+def normalize_name_token(token: str, lowercase_prefixes: bool) -> str:
+    def replace(match: re.Match[str]) -> str:
+        word = match.group(0)
+        if len(word) == 1:
+            return word.upper()
+        if lowercase_prefixes and word.lower() in SURNAME_PREFIXES:
+            return word.lower()
+        if word.isupper():
+            return word[0].upper() + word[1:].lower()
+        return word
+
+    return NAME_WORD_RE.sub(replace, token)
+
+
+def person_prefix_token(token: str) -> str:
+    letters = "".join(char for char in token if char.isalpha())
+    return letters.lower()
+
+
+def format_bibtex_person_name(name: str) -> str:
+    name = normalize_person_name(name)
+    if not name:
+        return ""
+    if name.startswith("{") and name.endswith("}"):
+        return name
+    if "," in name:
+        family, given = [normalize_space(part) for part in name.split(",", 1)]
+        family = " ".join(normalize_name_token(token, lowercase_prefixes=True) for token in family.split())
+        given = " ".join(normalize_name_token(token, lowercase_prefixes=False) for token in given.split())
+        return f"{family}, {given}" if given else family
+    tokens = name.split()
+    if len(tokens) == 1:
+        return normalize_name_token(tokens[0], lowercase_prefixes=True)
+    family_tokens = [tokens[-1]]
+    given_tokens = tokens[:-1]
+    if len(tokens) >= 2 and person_prefix_token(tokens[-2]) in SURNAME_PREFIXES:
+        family_tokens = [tokens[-2], tokens[-1]]
+        given_tokens = tokens[:-2]
+    family = " ".join(normalize_name_token(token, lowercase_prefixes=True) for token in family_tokens)
+    given = " ".join(normalize_name_token(token, lowercase_prefixes=False) for token in given_tokens)
+    return f"{family}, {given}" if given else family
+
+
+def format_bibtex_author_list(authors: list[Any]) -> str:
+    formatted = [format_bibtex_person_name(str(author)) for author in authors if format_bibtex_person_name(str(author))]
+    return " and ".join(formatted)
+
+
+def normalize_bib_pages(value: str) -> str:
+    pages = normalize_space(value)
+    return re.sub(r"(?<=\d)\s*[–—-]\s*(?=\d)", "--", pages)
+
+
+def meaningful_bib_url(metadata: dict[str, Any], entry_type: str) -> str:
+    if entry_type not in {"techreport", "misc"}:
+        return ""
+    url = normalize_space(str(metadata.get("url") or ""))
+    doi = normalize_space(str(metadata.get("doi") or "")).lower()
+    if not url:
+        return ""
+    normalized_url = url.lower().rstrip("/")
+    doi_urls = {
+        f"https://doi.org/{doi}".rstrip("/"),
+        f"http://doi.org/{doi}".rstrip("/"),
+        f"https://dx.doi.org/{doi}".rstrip("/"),
+        f"http://dx.doi.org/{doi}".rstrip("/"),
+    }
+    if doi and normalized_url in doi_urls:
+        return ""
+    return url
 
 
 def unique_preserve_order(items: list[Any]) -> list[Any]:
@@ -1482,39 +1566,75 @@ def bibtex_escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
 
 
-def build_bib_entry(key: str, metadata: dict[str, Any], pdf_path: Path, collection_name: str) -> str:
+def build_bib_entry(
+    key: str,
+    metadata: dict[str, Any],
+    pdf_path: Path,
+    collection_name: str,
+    omit_fields: set[str] | None = None,
+) -> str:
     entry_type = metadata.get("entry_type") or note_entry_type(metadata, collection_name)
+    omitted = omit_fields or set()
     fields: list[tuple[str, str]] = []
     authors = metadata.get("authors") or []
     if isinstance(authors, str):
         authors = [authors]
-    author_value = " and ".join(normalize_space(str(author)) for author in authors if normalize_space(str(author)))
+    author_value = format_bibtex_author_list(authors)
     title = normalize_space(str(metadata.get("title") or pdf_path.stem.replace("_", " ")))
     year = normalize_space(str(metadata.get("year") or ""))
     venue = normalize_space(str(metadata.get("venue") or ""))
+    publisher = normalize_space(str(metadata.get("publisher") or ""))
+    volume = normalize_space(str(metadata.get("volume") or ""))
+    issue = normalize_space(str(metadata.get("issue") or ""))
+    pages = normalize_bib_pages(str(metadata.get("pages") or ""))
+    note = normalize_space(str(metadata.get("note") or ""))
+    url = meaningful_bib_url(metadata, entry_type)
     if author_value:
         fields.append(("author", author_value))
     fields.append(("title", title))
     if entry_type == "article" and venue:
         fields.append(("journal", venue))
-    elif entry_type == "phdthesis" and venue:
-        fields.append(("school", venue))
-    elif entry_type == "incollection" and venue:
-        fields.append(("booktitle", venue))
+    elif entry_type == "phdthesis":
+        school = venue or publisher
+        if school:
+            fields.append(("school", school))
+    elif entry_type == "incollection":
+        if venue:
+            fields.append(("booktitle", venue))
+    elif entry_type == "book":
+        pass
+    elif entry_type == "techreport":
+        institution = publisher or venue
+        if institution:
+            fields.append(("institution", institution))
     elif venue:
         fields.append(("howpublished", venue))
+    elif publisher:
+        fields.append(("howpublished", publisher))
     if year:
         fields.append(("year", year))
-    for field_name in ["volume", "issue", "pages", "publisher", "doi", "url"]:
-        value = normalize_space(str(metadata.get(field_name) or ""))
-        if not value:
-            continue
-        mapped = "number" if field_name == "issue" else field_name
-        fields.append((mapped, value))
-    note = normalize_space(str(metadata.get("note") or ""))
-    if note:
+    if entry_type == "article":
+        if volume:
+            fields.append(("volume", volume))
+        if issue:
+            fields.append(("number", issue))
+        if pages:
+            fields.append(("pages", pages))
+    elif entry_type == "incollection":
+        if pages:
+            fields.append(("pages", pages))
+        if publisher:
+            fields.append(("publisher", publisher))
+    elif entry_type == "book":
+        book_publisher = publisher or venue
+        if book_publisher:
+            fields.append(("publisher", book_publisher))
+    if note and "note" not in omitted:
         fields.append(("note", note))
-    fields.append(("file", str(pdf_path)))
+    if url and "url" not in omitted:
+        fields.append(("url", url))
+    if "file" not in omitted:
+        fields.append(("file", str(pdf_path)))
     lines = [f"@{entry_type}{{{key},"]
     for field_name, value in fields:
         lines.append(f"  {field_name} = {{{bibtex_escape(value)}}},")
@@ -2710,7 +2830,10 @@ def write_folder_info(spec: CollectionSpec, pdf_count: int, note_count: int, rev
         folder_info_path.unlink()
 
 
-def bibliography_entries_for_spec(spec: CollectionSpec) -> list[tuple[str, str]]:
+def bibliography_entries_for_spec(
+    spec: CollectionSpec,
+    omit_fields: set[str] | None = None,
+) -> list[tuple[str, str]]:
     entries: list[tuple[str, str]] = []
     note_paths = list_source_notes(spec.note_path)
     for pdf_path in sorted(spec.pdf_path.glob("*.pdf")):
@@ -2727,6 +2850,10 @@ def bibliography_entries_for_spec(spec: CollectionSpec) -> list[tuple[str, str]]
                 "url": frontmatter.get("url") or "",
                 "publisher": frontmatter.get("publisher") or "",
                 "entry_type": frontmatter.get("entry_type") or note_entry_type(frontmatter, spec.category),
+                "volume": frontmatter.get("volume") or "",
+                "issue": frontmatter.get("issue") or "",
+                "pages": frontmatter.get("pages") or "",
+                "note": frontmatter.get("note") or "",
             }
         else:
             metadata = {
@@ -2738,21 +2865,46 @@ def bibliography_entries_for_spec(spec: CollectionSpec) -> list[tuple[str, str]]
                 "doi": "",
                 "url": "",
                 "publisher": "",
+                "volume": "",
+                "issue": "",
+                "pages": "",
+                "note": "",
                 "entry_type": note_entry_type({}, spec.category),
             }
-        entries.append((pdf_path.stem, build_bib_entry(pdf_path.stem, metadata, pdf_path, spec.category)))
+        entries.append(
+            (
+                pdf_path.stem,
+                build_bib_entry(
+                    pdf_path.stem,
+                    metadata,
+                    pdf_path,
+                    spec.category,
+                    omit_fields=omit_fields,
+                ),
+            )
+        )
     return entries
 
 
 def write_bibliography(collections: list[CollectionSpec]) -> Path:
     deduped_entries: dict[str, str] = {}
     for spec in collections:
-        for key, entry in bibliography_entries_for_spec(spec):
+        for key, entry in bibliography_entries_for_spec(spec, omit_fields=BIB_OMIT_FIELDS):
             deduped_entries[key] = entry
     GLOBAL_BIB_PATH.parent.mkdir(parents=True, exist_ok=True)
     ordered_entries = [deduped_entries[key] for key in sorted(deduped_entries)]
     GLOBAL_BIB_PATH.write_text("\n\n".join(ordered_entries) + "\n", encoding="utf-8")
     return GLOBAL_BIB_PATH
+
+
+def write_local_ref_bibliography(spec: CollectionSpec) -> Path:
+    deduped_entries: dict[str, str] = {}
+    for key, entry in bibliography_entries_for_spec(spec, omit_fields=BIB_OMIT_FIELDS):
+        deduped_entries[key] = entry
+    ref_path = spec.pdf_path / "ref.bib"
+    ordered_entries = [deduped_entries[key] for key in sorted(deduped_entries)]
+    ref_path.write_text("\n\n".join(ordered_entries) + "\n", encoding="utf-8")
+    return ref_path
 
 
 def remove_legacy_bibliographies() -> int:
@@ -3057,6 +3209,11 @@ def parse_args() -> argparse.Namespace:
         action="append",
         help="Process only a specific PDF folder, note folder, or category name.",
     )
+    parser.add_argument(
+        "--write-local-ref",
+        action="store_true",
+        help="Also write a local ref.bib (without DOI fields) inside each processed collection folder.",
+    )
     return parser.parse_args()
 
 
@@ -3077,6 +3234,7 @@ def main() -> None:
     rename_rows: list[dict[str, Any]] = []
     archive_rows: list[dict[str, Any]] = []
     review_rows: list[dict[str, Any]] = []
+    local_ref_paths: list[Path] = []
 
     for spec in collections:
         summary = sync_collection(spec, resolver, folder_map)
@@ -3084,6 +3242,8 @@ def main() -> None:
         rename_rows.extend(summary["rename_rows"])
         archive_rows.extend(summary["archive_rows"])
         review_rows.extend(summary["review_rows"])
+        if args.write_local_ref:
+            local_ref_paths.append(write_local_ref_bibliography(spec))
         print(
             f"{spec.pdf_dir}: pdfs={summary['pdf_count']}, notes={summary['note_count']}, "
             f"created={summary['created_notes']}, updated={summary['updated_notes']}, "
@@ -3122,6 +3282,10 @@ def main() -> None:
     print(f"Repaired note links: {repaired_note_links}")
     print(f"Updated related sections: {related_updates}")
     print(f"Pending journal source queue: {pending_sources_path}")
+    if local_ref_paths:
+        print("Local ref bibliographies:")
+        for ref_path in local_ref_paths:
+            print(f"- {ref_path}")
 
 
 if __name__ == "__main__":
