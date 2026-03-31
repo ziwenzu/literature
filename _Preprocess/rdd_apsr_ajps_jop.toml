@@ -1,0 +1,64 @@
+prefix = "rdd_apsr_ajps_jop_2021_2026"
+output_dir = "/Users/ziwenzu/Library/CloudStorage/Dropbox/Literature/rdd"
+
+keywords = [
+  "regression discontinuity",
+  "regression discontinuity design",
+  "regression-discontinuity",
+  "regression-discontinuity design",
+  "RDD",
+]
+
+search_queries = [
+  "regression discontinuity",
+  "regression discontinuity design",
+  "RDD",
+]
+
+discovery_providers = ["openalex", "crossref"]
+openalex_discovery_strategies = ["search", "title_search"]
+match_fields = ["title", "abstract"]
+match_mode = "any"
+year_cutoff = 2021
+
+download_pdfs = true
+download_workers = 4
+
+write_candidates_jsonl = true
+write_summary_json = true
+dry_run = false
+
+respect_robots_txt = true
+api_request_delay_seconds = 0.2
+html_request_delay_seconds = 1.0
+request_jitter_seconds = 0.2
+anti_bot_backoff_seconds = 20.0
+
+include_pending_sources = false
+
+[[journals]]
+code = "APSR"
+display_name = "American Political Science Review"
+openalex_source_id = "S176007004"
+filename_slug = "apsr"
+publisher = "Cambridge University Press"
+publisher_domains = ["cambridge.org", "jstor.org"]
+title_aliases = []
+
+[[journals]]
+code = "AJPS"
+display_name = "American Journal of Political Science"
+openalex_source_id = "S90314269"
+filename_slug = "ajps"
+publisher = "Wiley"
+publisher_domains = ["onlinelibrary.wiley.com", "wiley.com"]
+title_aliases = []
+
+[[journals]]
+code = "JOP"
+display_name = "The Journal of Politics"
+openalex_source_id = "S95650557"
+filename_slug = "jop"
+publisher = "University of Chicago Press"
+publisher_domains = ["journals.uchicago.edu"]
+title_aliases = []

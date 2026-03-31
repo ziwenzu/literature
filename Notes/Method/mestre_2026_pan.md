@@ -30,7 +30,7 @@ doi: 10.1017/pan.2025.10031
 url: https://doi.org/10.1017/pan.2025.10031
 zotero_key: ''
 date_added: '2026-03-17'
-last_reviewed: '2026-03-18'
+last_reviewed: '2026-03-26'
 tags:
 - literature
 - source-note
@@ -42,7 +42,7 @@ tags:
 # Potential and Pitfalls of Audio as Data for Political Research: Alignment, Features, and Classification Models
 
 ## Metadata Status
-- Synced on 2026-03-18 from local PDF and metadata lookup.
+- Synced on 2026-03-26 from local PDF and metadata lookup.
 - Core citation fields were refreshed from the PDF and external metadata.
 
 ## Basic Information
@@ -61,6 +61,8 @@ Abstract Political science is a field rich in multimodal information sources, fr
 
 ## Related Literature
 - [[Notes/Method/zhang_2026_wp|Vibe Researching as Wolf Coming: Can AI Agents with Skills Replace or Augment Social Scientists?]]  | shared: computational text analysis, science
-- [[Notes/Method/asirvatham_2026_wp|GPT as a Measurement Tool]]  | shared: classification, data
-- [[Notes/Method/xia_2026_wp|Benchmarking Political Persuasion Risks Across Frontier Large Language Models]]  | shared: models, research
-- [[Notes/Method/fu_2025_wp|Heterogeneous Treatment Effects and Causal Mechanisms]]  | shared: research
+- [[Notes/China Censorship Propaganda and Public Opinion/cirone_2023_psrm|Asymmetric flooding as a tool for foreign influence on social media]]  | shared: computational text analysis, research
+- [[Notes/Social_Media/cirone_2023_psrm|Asymmetric flooding as a tool for foreign influence on social media]]  | shared: computational text analysis, research
+- [[Notes/Lawyers and Courts/bailey_2025_apsr|The Effect of Judicial Decisions on Issue Salience and Legal Consciousness in Media Serving the LGBTQ+ Community]]  | shared: computational text analysis
+- [[Notes/Social_Media/fujiwara_2024_jeea|The Effect of Social Media on Elections: Evidence from The United States]]  | shared: computational text analysis
+- [[Notes/Developing Country Bureaucracy and Accountability/garfias_2022_ajps|When State Building Backfires: Elite Coordination and Popular Grievance in Rebellion]]  | shared: computational text analysis

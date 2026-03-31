@@ -743,13 +743,19 @@ LEGACY_NOTE_REDIRECTS = {
     },
 }
 
+LEGACY_COLLECTION_ALIASES = {
+    "Information": {
+        "pdf_dirs": ["Social_Media", "Social Media"],
+        "note_dirs": ["Social_Media", "Social Media"],
+    },
+}
+
 
 @dataclass(frozen=True)
 class CollectionSpec:
     pdf_dir: str
     note_dir: str
     category: str
-    bib_name: str
     source: str = "explicit"
 
     @property
@@ -760,44 +766,35 @@ class CollectionSpec:
     def note_path(self) -> Path:
         return NOTES_ROOT / self.note_dir
 
-    @property
-    def bib_path(self) -> Path:
-        return REFERENCE_ROOT / self.bib_name
-
 
 EXPLICIT_COLLECTIONS = {
     "Authoritarianism": CollectionSpec(
         "Authoritarianism",
         "Authoritarian Politics",
         "Authoritarian Politics",
-        "authoritarian_politics.bib",
     ),
     "Bureaucracy": CollectionSpec(
         "Bureaucracy",
         "Developing Country Bureaucracy and Accountability",
         "Developing Country Bureaucracy and Accountability",
-        "developing_country_bureaucracy_accountability.bib",
     ),
     "Dissertation": CollectionSpec(
         "Dissertation",
         "Good Dissertation",
         "Good Dissertation",
-        "good_dissertation.bib",
     ),
     "Information": CollectionSpec(
         "Information",
         "China Censorship Propaganda and Public Opinion",
         "China Censorship Propaganda and Public Opinion",
-        "china_censorship_propaganda_and_public_opinion.bib",
     ),
     "Law": CollectionSpec(
         "Law",
         "Lawyers and Courts",
         "Lawyers and Courts",
-        "lawyers_and_courts.bib",
     ),
-    "Method": CollectionSpec("Method", "Method", "Method", "method.bib"),
-    "RCT": CollectionSpec("RCT", "RCT", "RCT", "rct.bib"),
+    "Method": CollectionSpec("Method", "Method", "Method"),
+    "RCT": CollectionSpec("RCT", "RCT", "RCT"),
 }
 
 
@@ -957,8 +954,7 @@ def discover_collections(filters: set[str] | None = None) -> list[CollectionSpec
             spec = EXPLICIT_COLLECTIONS[child.name]
         else:
             note_dir = child.name
-            bib_name = f"{slugify(child.name)}.bib"
-            spec = CollectionSpec(child.name, note_dir, note_dir, bib_name, source="auto")
+            spec = CollectionSpec(child.name, note_dir, note_dir, source="auto")
         if spec.pdf_dir in seen:
             continue
         seen.add(spec.pdf_dir)
@@ -972,6 +968,11 @@ def build_pdf_folder_map(collections: list[CollectionSpec]) -> dict[str, str]:
         mapping[spec.pdf_dir] = spec.pdf_dir
         mapping[spec.note_dir] = spec.pdf_dir
         mapping[spec.category] = spec.pdf_dir
+        aliases = LEGACY_COLLECTION_ALIASES.get(spec.pdf_dir, {})
+        for alias in aliases.get("pdf_dirs", []):
+            mapping[alias] = spec.pdf_dir
+        for alias in aliases.get("note_dirs", []):
+            mapping[alias] = spec.pdf_dir
     return mapping
 
 
@@ -1002,6 +1003,16 @@ def build_note_index(collections: list[CollectionSpec]) -> dict[str, Any]:
             f"Reading Notes/{spec.note_dir}",
             spec.note_dir,
         }
+        legacy_aliases = LEGACY_COLLECTION_ALIASES.get(spec.pdf_dir, {})
+        for alias_dir in legacy_aliases.get("note_dirs", []):
+            aliases.update(
+                {
+                    f"{NOTES_FOLDER_NAME}/{alias_dir}",
+                    f"Notes/{alias_dir}",
+                    f"Reading Notes/{alias_dir}",
+                    alias_dir,
+                }
+            )
         for alias in aliases:
             canonical_dirs[alias] = canonical_dir
             stems_by_dir[alias] = stems
@@ -2113,11 +2124,15 @@ def next_available_pdf_path(pdf_dir: Path, desired_stem: str, current_path: Path
     if current_path.stem == desired_stem:
         return current_path
     candidate = pdf_dir / f"{desired_stem}.pdf"
+    if candidate == current_path:
+        return current_path
     if not candidate.exists():
         return candidate
     index = 2
     while True:
         candidate = pdf_dir / f"{desired_stem}_{index}.pdf"
+        if candidate == current_path:
+            return current_path
         if not candidate.exists():
             return candidate
         index += 1
@@ -2830,6 +2845,18 @@ def write_folder_info(spec: CollectionSpec, pdf_count: int, note_count: int, rev
         folder_info_path.unlink()
 
 
+def clean_collection_non_pdf_files(spec: CollectionSpec) -> int:
+    removed = 0
+    for path in spec.pdf_path.iterdir():
+        if not path.is_file():
+            continue
+        if path.suffix.lower() == ".pdf":
+            continue
+        path.unlink(missing_ok=True)
+        removed += 1
+    return removed
+
+
 def bibliography_entries_for_spec(
     spec: CollectionSpec,
     omit_fields: set[str] | None = None,
@@ -2895,16 +2922,6 @@ def write_bibliography(collections: list[CollectionSpec]) -> Path:
     ordered_entries = [deduped_entries[key] for key in sorted(deduped_entries)]
     GLOBAL_BIB_PATH.write_text("\n\n".join(ordered_entries) + "\n", encoding="utf-8")
     return GLOBAL_BIB_PATH
-
-
-def write_local_ref_bibliography(spec: CollectionSpec) -> Path:
-    deduped_entries: dict[str, str] = {}
-    for key, entry in bibliography_entries_for_spec(spec, omit_fields=BIB_OMIT_FIELDS):
-        deduped_entries[key] = entry
-    ref_path = spec.pdf_path / "ref.bib"
-    ordered_entries = [deduped_entries[key] for key in sorted(deduped_entries)]
-    ref_path.write_text("\n\n".join(ordered_entries) + "\n", encoding="utf-8")
-    return ref_path
 
 
 def remove_legacy_bibliographies() -> int:
@@ -3171,6 +3188,7 @@ def sync_collection(spec: CollectionSpec, resolver: MetadataResolver, folder_map
             metadata_review_count += 1
 
     write_folder_info(spec, len(list(spec.pdf_path.glob("*.pdf"))), len(note_paths), metadata_review_count)
+    removed_non_pdf_files = clean_collection_non_pdf_files(spec)
 
     return {
         "collection": spec.pdf_dir,
@@ -3184,6 +3202,7 @@ def sync_collection(spec: CollectionSpec, resolver: MetadataResolver, folder_map
         "rename_rows": rename_rows,
         "archive_rows": archive_rows,
         "review_rows": review_rows,
+        "removed_non_pdf_files": removed_non_pdf_files,
         "bib_path": str(GLOBAL_BIB_PATH),
     }
 
@@ -3209,11 +3228,6 @@ def parse_args() -> argparse.Namespace:
         action="append",
         help="Process only a specific PDF folder, note folder, or category name.",
     )
-    parser.add_argument(
-        "--write-local-ref",
-        action="store_true",
-        help="Also write a local ref.bib (without DOI fields) inside each processed collection folder.",
-    )
     return parser.parse_args()
 
 
@@ -3234,7 +3248,7 @@ def main() -> None:
     rename_rows: list[dict[str, Any]] = []
     archive_rows: list[dict[str, Any]] = []
     review_rows: list[dict[str, Any]] = []
-    local_ref_paths: list[Path] = []
+    removed_non_pdf_files = 0
 
     for spec in collections:
         summary = sync_collection(spec, resolver, folder_map)
@@ -3242,8 +3256,7 @@ def main() -> None:
         rename_rows.extend(summary["rename_rows"])
         archive_rows.extend(summary["archive_rows"])
         review_rows.extend(summary["review_rows"])
-        if args.write_local_ref:
-            local_ref_paths.append(write_local_ref_bibliography(spec))
+        removed_non_pdf_files += summary["removed_non_pdf_files"]
         print(
             f"{spec.pdf_dir}: pdfs={summary['pdf_count']}, notes={summary['note_count']}, "
             f"created={summary['created_notes']}, updated={summary['updated_notes']}, "
@@ -3279,13 +3292,10 @@ def main() -> None:
     print(f"Renamed PDFs: {len(rename_rows)}")
     print(f"Archived duplicate PDFs: {len(archive_rows)}")
     print(f"Duplicate review items: {len(review_rows)}")
+    print(f"Removed non-PDF collection files: {removed_non_pdf_files}")
     print(f"Repaired note links: {repaired_note_links}")
     print(f"Updated related sections: {related_updates}")
     print(f"Pending journal source queue: {pending_sources_path}")
-    if local_ref_paths:
-        print("Local ref bibliographies:")
-        for ref_path in local_ref_paths:
-            print(f"- {ref_path}")
 
 
 if __name__ == "__main__":
