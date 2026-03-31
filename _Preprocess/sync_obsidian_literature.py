@@ -29,12 +29,16 @@ if not REFERENCE_ROOT.exists():
 REPORT_ROOT = ROOT / "_Preprocess"
 DUPLICATE_ROOT = ROOT / "_Duplicates"
 PENDING_JOURNAL_SOURCES_PATH = REPORT_ROOT / "crawler_next_journals.csv"
+GLOBAL_BIB_NAME = "literature.bib"
+GLOBAL_BIB_PATH = REFERENCE_ROOT / GLOBAL_BIB_NAME
 TODAY = date.today().isoformat()
 USER_AGENT = "Codex Literature Vault Sync/2.0 (mailto:no-reply@example.com)"
 NOTES_FOLDER_NAME = NOTES_ROOT.name
 
 DOI_RE = re.compile(r"10\.\d{4,9}/[-._;()/:A-Za-z0-9]+", re.IGNORECASE)
 FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n?", re.DOTALL)
+NAME_WORD_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ]+")
+BIB_OMIT_FIELDS = {"doi", "file"}
 
 SYSTEM_DIR_NAMES = {
     ".git",
@@ -209,29 +213,57 @@ KNOWN_JOURNALS = {
     "arlss": "Annual Review of Law and Social Science",
     "arps": "Annual Review of Political Science",
     "bjps": "British Journal of Political Science",
+    "bmgs": "Byzantine and Modern Greek Studies",
+    "cjls": "Canadian Journal of Law and Society / La Revue Canadienne Droit et Société",
     "cq": "The China Quarterly",
     "cps": "Comparative Political Studies",
     "ecma": "Econometrica",
+    "eeh": "Explorations in Economic History",
+    "ehdr": "Economic History of Developing Regions",
     "ej": "The Economic Journal",
+    "ejdr": "The European Journal of Development Research",
+    "hofstra": "Hofstra Law Review",
+    "imago": "Imago Mundi",
     "io": "International Organization",
+    "itinerario": "Itinerario",
     "jde": "Journal of Development Economics",
+    "jeh": "The Journal of Economic History",
+    "jeg": "Journal of Economic Geography",
+    "jgh": "Journal of Global History",
+    "ijpor": "International Journal of Public Opinion Research",
+    "jas": "The Journal of Asian Studies",
     "jcc": "Journal of Contemporary China",
+    "jcr": "Journal of Conflict Resolution",
     "jeea": "Journal of the European Economic Association",
+    "jpopecon": "Journal of Population Economics",
+    "jrs": "Journal of Regional Science",
+    "jue": "Journal of Urban Economics",
     "jlc": "Journal of Law and Courts",
     "jop": "The Journal of Politics",
+    "jpart": "Journal of Public Administration Research and Theory",
     "jpe": "Journal of Political Economy",
     "jpube": "Journal of Public Economics",
     "jpubeco": "Journal of Public Economics",
     "lsi": "Law & Social Inquiry",
     "lsr": "Law & Society Review",
     "pan": "Political Analysis",
+    "polgeo": "Political Geography",
+    "polbeh": "Political Behavior",
     "polcomm": "Political Communication",
+    "poq": "Public Opinion Quarterly",
+    "polgender": "Politics & Gender",
     "psrm": "Political Science Research and Methods",
     "qjps": "Quarterly Journal of Political Science",
     "qje": "Quarterly Journal of Economics",
     "jeps": "Journal of Experimental Political Science",
+    "arecon": "Annual Review of Economics",
+    "arpsych": "Annual Review of Psychology",
     "restat": "The Review of Economics and Statistics",
     "restud": "Review of Economic Studies",
+    "arsoc": "Annual Review of Sociology",
+    "rsue": "Regional Science and Urban Economics",
+    "rte": "Research in Transportation Economics",
+    "ssh": "Social Science History",
     "wpol": "World Politics",
 }
 
@@ -311,6 +343,379 @@ BOILERPLATE_PATTERNS = [
     ]
 ]
 
+ARTICLE_SECTION_LABELS = {
+    "article",
+    "original article",
+    "research article",
+    "research note",
+    "regular article",
+    "brief report",
+}
+
+AFFILIATION_HINTS = (
+    "university",
+    "department",
+    "school",
+    "college",
+    "institute",
+    "centre",
+    "center",
+    "faculty",
+    "correspondence",
+    "email",
+    "keywords",
+    "jel",
+    "contents lists available at",
+    "journal homepage",
+    "article info",
+    "dataset link",
+    "published online",
+    "first published online",
+    "received",
+    "accepted",
+    "revised",
+    "acknowledg",
+    "e-mail",
+    "supplementary data",
+    "teaching slides",
+    "editor in charge",
+    "data science",
+)
+
+LOCAL_VENUE_ALIASES = {
+    "american political science review": "apsr",
+    "american journal of political science": "ajps",
+    "american j political sci": "ajps",
+    "the journal of politics": "jop",
+    "journal of politics": "jop",
+    "journal of public administration research and theory": "jpart",
+    "british journal of political science": "bjps",
+    "b j pol s": "bjps",
+    "comparative political studies": "cps",
+    "quarterly journal of political science": "qjps",
+    "journal of experimental political science": "jeps",
+    "the china quarterly": "cq",
+    "china quarterly": "cq",
+    "journal of contemporary china": "jcc",
+    "world politics": "wpol",
+    "international organization": "io",
+    "canadian journal of law and society": "cjls",
+    "canadian journal of law and society / la revue canadienne droit et societe": "cjls",
+    "la revue canadienne droit et societe": "cjls",
+    "hofstra law review": "hofstra",
+    "the journal of asian studies": "jas",
+    "journal of asian studies": "jas",
+    "political analysis": "pan",
+    "political geography": "polgeo",
+    "political behavior": "polbeh",
+    "political science research and methods": "psrm",
+    "public opinion quarterly": "poq",
+    "annual review of political science": "arps",
+    "annual review of psychology": "arpsych",
+    "annual review of economics": "arecon",
+    "annual review of sociology": "arsoc",
+    "annurev polisci": "arps",
+    "american economic review": "aer",
+    "american economic journal applied economics": "aejapplied",
+    "american economic journal economic policy": "aejpolicy",
+    "american economic journal macroeconomics": "aejmacro",
+    "american economic journal microeconomics": "aejmicro",
+    "journal of political economy": "jpe",
+    "journal of public economics": "jpubeco",
+    "journal of development economics": "jde",
+    "journal of regional science": "jrs",
+    "journal of population economics": "jpopecon",
+    "journal of conflict resolution": "jcr",
+    "journal of global history": "jgh",
+    "journal of economic geography": "jeg",
+    "econometrica": "ecma",
+    "the quarterly journal of economics": "qje",
+    "quarterly journal of economics": "qje",
+    "the review of economic studies": "restud",
+    "review of economic studies": "restud",
+    "the review of economics and statistics": "restat",
+    "review of economics and statistics": "restat",
+    "journal of the european economic association": "jeea",
+    "the economic journal": "ej",
+    "economic journal": "ej",
+    "explorations in economic history": "eeh",
+    "economic history of developing regions": "ehdr",
+    "the european journal of development research": "ejdr",
+    "european journal of development research": "ejdr",
+    "imago mundi": "imago",
+    "itinerario": "itinerario",
+    "regional science and urban economics": "rsue",
+    "research in transportation economics": "rte",
+    "social science history": "ssh",
+    "byzantine and modern greek studies": "bmgs",
+}
+
+DOI_JOURNAL_PATTERNS = [
+    (re.compile(r"10\.1257/aer\.", re.IGNORECASE), "aer"),
+    (re.compile(r"10\.1111/ajps\.", re.IGNORECASE), "ajps"),
+    (re.compile(r"10\.1017/psrm\.", re.IGNORECASE), "psrm"),
+    (re.compile(r"10\.1017/s1743923x", re.IGNORECASE), "polgender"),
+    (re.compile(r"10\.1093/jopart/", re.IGNORECASE), "jpart"),
+    (re.compile(r"10\.1093/ijpor/", re.IGNORECASE), "ijpor"),
+    (re.compile(r"10\.1017/pan\.|10\.1093/pan/", re.IGNORECASE), "pan"),
+    (re.compile(r"10\.1007/s11109-", re.IGNORECASE), "polbeh"),
+    (re.compile(r"10\.1093/poq/", re.IGNORECASE), "poq"),
+    (re.compile(r"10\.1017/s00071234", re.IGNORECASE), "bjps"),
+    (re.compile(r"10\.1017/s00030554", re.IGNORECASE), "apsr"),
+    (re.compile(r"10\.1093/jeea/", re.IGNORECASE), "jeea"),
+    (re.compile(r"10\.1016/j\.jde\.", re.IGNORECASE), "jde"),
+    (re.compile(r"10\.1016/j\.eeh\.", re.IGNORECASE), "eeh"),
+    (re.compile(r"10\.1016/j\.jue\.", re.IGNORECASE), "jue"),
+    (re.compile(r"10\.1016/j\.jpubeco\.", re.IGNORECASE), "jpubeco"),
+    (re.compile(r"10\.1016/j\.polgeo\.", re.IGNORECASE), "polgeo"),
+    (re.compile(r"10\.1016/j\.regsciurbeco\.", re.IGNORECASE), "rsue"),
+    (re.compile(r"10\.1016/j\.retrec\.", re.IGNORECASE), "rte"),
+    (re.compile(r"10\.1017/s00220507", re.IGNORECASE), "jeh"),
+    (re.compile(r"10\.1017/s00208183", re.IGNORECASE), "io"),
+    (re.compile(r"10\.1017/s00219118", re.IGNORECASE), "jas"),
+    (re.compile(r"10\.1017/s01651153", re.IGNORECASE), "itinerario"),
+    (re.compile(r"10\.1017/s17400228", re.IGNORECASE), "jgh"),
+    (re.compile(r"10\.1017/ssh\.", re.IGNORECASE), "ssh"),
+    (re.compile(r"10\.3982/ecta", re.IGNORECASE), "ecma"),
+    (re.compile(r"10\.1093/jeg/", re.IGNORECASE), "jeg"),
+    (re.compile(r"10\.1111/ecoj\.|10\.1093/ej/", re.IGNORECASE), "ej"),
+    (re.compile(r"10\.1111/jors\.", re.IGNORECASE), "jrs"),
+    (re.compile(r"10\.1146/annurev-economics", re.IGNORECASE), "arecon"),
+    (re.compile(r"10\.1146/annurev-polisci", re.IGNORECASE), "arps"),
+    (re.compile(r"10\.1146/annurev-psych", re.IGNORECASE), "arpsych"),
+    (re.compile(r"10\.1146/annurev-soc|10\.1146/annurev\.soc", re.IGNORECASE), "arsoc"),
+    (re.compile(r"10\.1111/ajps", re.IGNORECASE), "ajps"),
+    (re.compile(r"10\.1177/00220027", re.IGNORECASE), "jcr"),
+    (re.compile(r"10\.1179/byz\.", re.IGNORECASE), "bmgs"),
+    (re.compile(r"10\.3138/cjls\.", re.IGNORECASE), "cjls"),
+    (re.compile(r"10\.1007/s00148-", re.IGNORECASE), "jpopecon"),
+    (re.compile(r"10\.1080/03085694\.", re.IGNORECASE), "imago"),
+    (re.compile(r"10\.1080/09578819", re.IGNORECASE), "ejdr"),
+    (re.compile(r"10\.1080/20780389\.", re.IGNORECASE), "ehdr"),
+]
+
+LOCAL_DOI_METADATA_OVERRIDES = {
+    "10.1017/s0007123413000203": {
+        "title": "Online Social Media and Political Awareness in Authoritarian Regimes",
+        "authors": ["Ora John Reuter", "David Szakonyi"],
+        "year": "2013",
+        "venue": "British Journal of Political Science",
+        "journal_abbr": "bjps",
+    },
+    "10.1257/aer.20211218": {
+        "title": "Social Media and Mental Health",
+        "authors": ["Luca Braghieri", "Ro’ee Levy", "Alexey Makarin"],
+        "year": "2022",
+        "venue": "American Economic Review",
+        "journal_abbr": "aer",
+    },
+    "10.1017/s0003055423001053": {
+        "title": "Social Media, Social Control, and the Politics of Public Shaming",
+        "authors": ["Jennifer Forestal"],
+        "year": "2024",
+        "venue": "American Political Science Review",
+        "journal_abbr": "apsr",
+    },
+    "10.1017/s000305542300134x": {
+        "title": "Toxic Speech and Limited Demand for Content Moderation on Social Media",
+        "authors": ["Franziska Pradel", "Jan Zilinsky", "Spyros Kosmidis", "Yannis Theocharis"],
+        "year": "2024",
+        "venue": "American Political Science Review",
+        "journal_abbr": "apsr",
+    },
+    "10.1093/jeea/jvaa045": {
+        "title": "Fanning the Flames of Hate: Social Media and Hate Crime",
+        "authors": ["Karsten Müller", "Carlo Schwarz"],
+        "year": "2021",
+        "venue": "Journal of the European Economic Association",
+        "journal_abbr": "jeea",
+    },
+    "10.1016/j.jdeveco.2026.103784": {
+        "title": "The spread of (mis)information: A social media experiment in Pakistan",
+        "authors": ["Sarojini Hirshleifer", "Mustafa Naseem", "Agha Ali Raza", "Arman Rezaee"],
+        "year": "2026",
+        "venue": "Journal of Development Economics",
+        "journal_abbr": "jde",
+    },
+    "10.1016/j.jpubeco.2026.105589": {
+        "title": "Ranking for engagement: How social media algorithms fuel misinformation and polarization",
+        "authors": ["Fabrizio Germano"],
+        "year": "2026",
+        "venue": "Journal of Public Economics",
+        "journal_abbr": "jpubeco",
+    },
+    "10.1017/s0003055422000508": {
+        "title": "“This Hearing Should Be Flipped”: Democratic Spectatorship, Social Media, and the Problem of Demagogic Candor",
+        "authors": ["Boris Litvin"],
+        "year": "2023",
+        "venue": "American Political Science Review",
+        "journal_abbr": "apsr",
+    },
+    "10.1017/s0007123421000594": {
+        "title": "Social Media and Press Freedom",
+        "authors": ["Korhan Kocak", "Özgür Kıbrıs"],
+        "year": "2023",
+        "venue": "British Journal of Political Science",
+        "journal_abbr": "bjps",
+    },
+    "10.1146/annurev-polisci-033123015559": {
+        "title": "Accountability in Developing Democracies: The Impact of the Internet, Social Media, and Polarization",
+        "authors": ["Horacio Larreguy", "Pia J. Raffler"],
+        "year": "2025",
+        "venue": "Annual Review of Political Science",
+        "journal_abbr": "arps",
+    },
+    "10.1017/xps.2024.15": {
+        "title": "Introducing the Visual Conjoint, with an Application to Candidate Evaluation on Social Media",
+        "authors": ["Alessandro Vecchiato", "Kevin Munger"],
+        "year": "2025",
+        "venue": "Journal of Experimental Political Science",
+        "journal_abbr": "jeps",
+    },
+    "10.1017/pan.2024.19": {
+        "title": "News Sharing on Social Media: Mapping the Ideology of News Media, Politicians, and the Mass Public",
+        "authors": ["Gregory Eady", "Richard Bonneau", "Joshua A. Tucker", "Jonathan Nagler"],
+        "year": "2025",
+        "venue": "Political Analysis",
+        "journal_abbr": "pan",
+    },
+    "10.1086/702233": {
+        "title": "Media, Public Opinion, and Foreign Policy in the Age of Social Media",
+        "authors": ["Matthew A. Baum", "Philip B. K. Potter"],
+        "year": "2019",
+        "venue": "The Journal of Politics",
+        "journal_abbr": "jop",
+    },
+    "10.1016/j.jpubeco.2025.105345": {
+        "title": "Debunking “fake news” on social media: Immediate and short-term effects of fact-checking and media literacy interventions",
+        "authors": ["Lara Marie Berger", "Anna Kerkhof", "Felix Mindl", "Johannes Münster"],
+        "year": "2025",
+        "venue": "Journal of Public Economics",
+        "journal_abbr": "jpubeco",
+    },
+    "10.1017/s0003055417000144": {
+        "title": "How the Chinese Government Fabricates Social Media Posts for Strategic Distraction, Not Engaged Argument",
+        "authors": ["Gary King", "Jennifer Pan", "Margaret E. Roberts"],
+        "year": "2017",
+        "venue": "American Political Science Review",
+        "journal_abbr": "apsr",
+    },
+    "10.1017/s0007123420000198": {
+        "title": "Political Knowledge and Misinformation in the Era of Social Media: Evidence From the 2015 UK Election",
+        "authors": ["Kevin Munger", "Patrick J. Egan", "Jonathan Nagler", "Jonathan Ronen", "Joshua Tucker"],
+        "year": "2022",
+        "venue": "British Journal of Political Science",
+        "journal_abbr": "bjps",
+    },
+    "10.1086/703490": {
+        "title": "Social Media, Political Science, and Democracy",
+        "authors": ["Kevin Munger"],
+        "year": "2019",
+        "venue": "The Journal of Politics",
+        "journal_abbr": "jop",
+    },
+    "10.1017/s0007123424000450": {
+        "title": "Estimating Ideal Points of British MPs Through Their Social Media Followership",
+        "authors": ["Conor Gaughan"],
+        "year": "2024",
+        "venue": "British Journal of Political Science",
+        "journal_abbr": "bjps",
+    },
+    "10.1017/s0003055419000352": {
+        "title": "Who Leads? Who Follows? Measuring Issue Attention and Agenda Setting by Legislators and the Mass Public Using Social Media Data",
+        "authors": ["Pablo Barberá", "Andreu Casas", "Jonathan Nagler", "Patrick J. Egan", "Richard Bonneau", "John T. Jost", "Joshua A. Tucker"],
+        "year": "2019",
+        "venue": "American Political Science Review",
+        "journal_abbr": "apsr",
+    },
+    "10.1017/s0007123416000612": {
+        "title": "A Manifesto, in 140 Characters or Fewer: Social Media as a Tool of Rebel Diplomacy",
+        "authors": ["Benjamin T. Jones", "Eleonora Mattiacci"],
+        "year": "2017",
+        "venue": "British Journal of Political Science",
+        "journal_abbr": "bjps",
+    },
+    "10.1017/s0007123418000194": {
+        "title": "Launching Revolution: Social Media and the Egyptian Uprising’s First Movers",
+        "authors": ["Killian Clarke", "Korhan Kocak"],
+        "year": "2020",
+        "venue": "British Journal of Political Science",
+        "journal_abbr": "bjps",
+    },
+    "10.1016/j.jpubeco.2022.104735": {
+        "title": "Do social media ads matter for political behavior? A field experiment",
+        "authors": ["George Beknazar-Yuzbashev", "Mateusz Stalinski"],
+        "year": "2022",
+        "venue": "Journal of Public Economics",
+        "journal_abbr": "jpubeco",
+    },
+    "10.1086/739664": {
+        "title": "A Male Hostility Spiral? Polarized Communication among Political Elites on Social Media",
+        "authors": ["Albert Wendsjö", "Hanna Bäck", "Andrej Kokkonen"],
+        "year": "2025",
+        "venue": "The Journal of Politics",
+        "journal_abbr": "jop",
+    },
+    "10.1086/716949": {
+        "title": "Fighting Propaganda with Censorship: A Study of the Ukrainian Ban on Russian Social Media",
+        "authors": ["Yevgeniy Golovchenko"],
+        "year": "2022",
+        "venue": "The Journal of Politics",
+        "journal_abbr": "jop",
+    },
+    "10.1086/733007": {
+        "title": "Using Social Media to Respond to Negative Polls: Politicians’ Issue Responsiveness on Facebook",
+        "authors": ["Helene Helboe Pedersen", "Henrik Bech Seeberg"],
+        "year": "2025",
+        "venue": "The Journal of Politics",
+        "journal_abbr": "jop",
+    },
+    "10.1017/psrm.2018.68": {
+        "title": "Missing the Target? Using Surveys to Validate Social Media Ad Targeting",
+        "authors": ["Michael W. Sances"],
+        "year": "2021",
+        "venue": "Political Science Research and Methods",
+        "journal_abbr": "psrm",
+    },
+    "10.1093/ej/ueaf047": {
+        "title": "Correlation Neglect on Social Media: Effects on Civil Service Applications in China",
+        "authors": ["Yihong Huang", "Yixi Jiang", "Ziqi Lu"],
+        "year": "2025",
+        "venue": "The Economic Journal",
+        "journal_abbr": "ej",
+    },
+    "10.1596/1813-9450-11071": {
+        "title": "Road Investment and Violence in DRC: Perishable Peace Dividends",
+        "authors": ["Mathilde Lebrand", "Hannes Mueller", "Peer Schouten", "Jevgenijs Steinbuks"],
+        "year": "2025",
+        "venue": "World Bank Policy Research Working Paper",
+        "journal_abbr": "wp",
+    },
+    "10.1146/annurev-polisci-052715111917": {
+        "title": "The Electoral Consequences of Corruption",
+        "authors": ["Catherine E. De Vries", "Hector Solaz"],
+        "year": "2017",
+        "venue": "Annual Review of Political Science",
+        "journal_abbr": "arps",
+        "doi": "10.1146/annurev-polisci-052715-111917",
+        "url": "https://doi.org/10.1146/annurev-polisci-052715-111917",
+        "volume": "20",
+        "pages": "391-408",
+        "publisher": "Annual Reviews",
+    },
+    "10.1146/annurev-polisci-052715-111917": {
+        "title": "The Electoral Consequences of Corruption",
+        "authors": ["Catherine E. De Vries", "Hector Solaz"],
+        "year": "2017",
+        "venue": "Annual Review of Political Science",
+        "journal_abbr": "arps",
+        "doi": "10.1146/annurev-polisci-052715-111917",
+        "url": "https://doi.org/10.1146/annurev-polisci-052715-111917",
+        "volume": "20",
+        "pages": "391-408",
+        "publisher": "Annual Reviews",
+    },
+}
 AUDIT_TAG_PATTERNS = {
     "audit-study": [
         r"\baudit experiment(?:s)?\b",
@@ -411,6 +816,82 @@ def normalize_title(text: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", " ", text).strip().lower()
 
 
+def normalize_person_name(text: str) -> str:
+    return normalize_space(html.unescape(text))
+
+
+def normalize_name_token(token: str, lowercase_prefixes: bool) -> str:
+    def replace(match: re.Match[str]) -> str:
+        word = match.group(0)
+        if len(word) == 1:
+            return word.upper()
+        if lowercase_prefixes and word.lower() in SURNAME_PREFIXES:
+            return word.lower()
+        if word.isupper():
+            return word[0].upper() + word[1:].lower()
+        return word
+
+    return NAME_WORD_RE.sub(replace, token)
+
+
+def person_prefix_token(token: str) -> str:
+    letters = "".join(char for char in token if char.isalpha())
+    return letters.lower()
+
+
+def format_bibtex_person_name(name: str) -> str:
+    name = normalize_person_name(name)
+    if not name:
+        return ""
+    if name.startswith("{") and name.endswith("}"):
+        return name
+    if "," in name:
+        family, given = [normalize_space(part) for part in name.split(",", 1)]
+        family = " ".join(normalize_name_token(token, lowercase_prefixes=True) for token in family.split())
+        given = " ".join(normalize_name_token(token, lowercase_prefixes=False) for token in given.split())
+        return f"{family}, {given}" if given else family
+    tokens = name.split()
+    if len(tokens) == 1:
+        return normalize_name_token(tokens[0], lowercase_prefixes=True)
+    family_tokens = [tokens[-1]]
+    given_tokens = tokens[:-1]
+    if len(tokens) >= 2 and person_prefix_token(tokens[-2]) in SURNAME_PREFIXES:
+        family_tokens = [tokens[-2], tokens[-1]]
+        given_tokens = tokens[:-2]
+    family = " ".join(normalize_name_token(token, lowercase_prefixes=True) for token in family_tokens)
+    given = " ".join(normalize_name_token(token, lowercase_prefixes=False) for token in given_tokens)
+    return f"{family}, {given}" if given else family
+
+
+def format_bibtex_author_list(authors: list[Any]) -> str:
+    formatted = [format_bibtex_person_name(str(author)) for author in authors if format_bibtex_person_name(str(author))]
+    return " and ".join(formatted)
+
+
+def normalize_bib_pages(value: str) -> str:
+    pages = normalize_space(value)
+    return re.sub(r"(?<=\d)\s*[–—-]\s*(?=\d)", "--", pages)
+
+
+def meaningful_bib_url(metadata: dict[str, Any], entry_type: str) -> str:
+    if entry_type not in {"techreport", "misc"}:
+        return ""
+    url = normalize_space(str(metadata.get("url") or ""))
+    doi = normalize_space(str(metadata.get("doi") or "")).lower()
+    if not url:
+        return ""
+    normalized_url = url.lower().rstrip("/")
+    doi_urls = {
+        f"https://doi.org/{doi}".rstrip("/"),
+        f"http://doi.org/{doi}".rstrip("/"),
+        f"https://dx.doi.org/{doi}".rstrip("/"),
+        f"http://dx.doi.org/{doi}".rstrip("/"),
+    }
+    if doi and normalized_url in doi_urls:
+        return ""
+    return url
+
+
 def unique_preserve_order(items: list[Any]) -> list[Any]:
     output: list[Any] = []
     seen: set[Any] = set()
@@ -426,7 +907,10 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     match = FRONTMATTER_RE.match(text)
     if not match:
         return {}, text
-    data = yaml.safe_load(match.group(1)) or {}
+    try:
+        data = yaml.safe_load(match.group(1)) or {}
+    except yaml.YAMLError:
+        return {}, text[match.end() :]
     return data, text[match.end() :]
 
 
@@ -973,6 +1457,8 @@ def infer_entry_type(metadata: dict[str, Any], collection_name: str) -> str:
     journal_abbr = infer_journal_abbr(venue, str(metadata.get("journal_abbr") or ""))
     if journal_abbr and journal_abbr in KNOWN_JOURNALS:
         return "article"
+    if entry_type == "article":
+        return "article"
     if working_paper_like(metadata):
         return "techreport"
     if book_like(metadata):
@@ -1007,6 +1493,8 @@ def classify_name_suffix(metadata: dict[str, Any], fallback_abbr: str, collectio
     if legacy_or_manual_abbr == "wp":
         return "wp"
 
+    if normalize_space(str(metadata.get("entry_type") or "")).lower() == "article" and venue:
+        return unknown_journal_slug(venue) or "misc"
     if working_paper_like(metadata):
         return "wp"
     if book_like(metadata):
@@ -1078,39 +1566,75 @@ def bibtex_escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
 
 
-def build_bib_entry(key: str, metadata: dict[str, Any], pdf_path: Path, collection_name: str) -> str:
+def build_bib_entry(
+    key: str,
+    metadata: dict[str, Any],
+    pdf_path: Path,
+    collection_name: str,
+    omit_fields: set[str] | None = None,
+) -> str:
     entry_type = metadata.get("entry_type") or note_entry_type(metadata, collection_name)
+    omitted = omit_fields or set()
     fields: list[tuple[str, str]] = []
     authors = metadata.get("authors") or []
     if isinstance(authors, str):
         authors = [authors]
-    author_value = " and ".join(normalize_space(str(author)) for author in authors if normalize_space(str(author)))
+    author_value = format_bibtex_author_list(authors)
     title = normalize_space(str(metadata.get("title") or pdf_path.stem.replace("_", " ")))
     year = normalize_space(str(metadata.get("year") or ""))
     venue = normalize_space(str(metadata.get("venue") or ""))
+    publisher = normalize_space(str(metadata.get("publisher") or ""))
+    volume = normalize_space(str(metadata.get("volume") or ""))
+    issue = normalize_space(str(metadata.get("issue") or ""))
+    pages = normalize_bib_pages(str(metadata.get("pages") or ""))
+    note = normalize_space(str(metadata.get("note") or ""))
+    url = meaningful_bib_url(metadata, entry_type)
     if author_value:
         fields.append(("author", author_value))
     fields.append(("title", title))
     if entry_type == "article" and venue:
         fields.append(("journal", venue))
-    elif entry_type == "phdthesis" and venue:
-        fields.append(("school", venue))
-    elif entry_type == "incollection" and venue:
-        fields.append(("booktitle", venue))
+    elif entry_type == "phdthesis":
+        school = venue or publisher
+        if school:
+            fields.append(("school", school))
+    elif entry_type == "incollection":
+        if venue:
+            fields.append(("booktitle", venue))
+    elif entry_type == "book":
+        pass
+    elif entry_type == "techreport":
+        institution = publisher or venue
+        if institution:
+            fields.append(("institution", institution))
     elif venue:
         fields.append(("howpublished", venue))
+    elif publisher:
+        fields.append(("howpublished", publisher))
     if year:
         fields.append(("year", year))
-    for field_name in ["volume", "issue", "pages", "publisher", "doi", "url"]:
-        value = normalize_space(str(metadata.get(field_name) or ""))
-        if not value:
-            continue
-        mapped = "number" if field_name == "issue" else field_name
-        fields.append((mapped, value))
-    note = normalize_space(str(metadata.get("note") or ""))
-    if note:
+    if entry_type == "article":
+        if volume:
+            fields.append(("volume", volume))
+        if issue:
+            fields.append(("number", issue))
+        if pages:
+            fields.append(("pages", pages))
+    elif entry_type == "incollection":
+        if pages:
+            fields.append(("pages", pages))
+        if publisher:
+            fields.append(("publisher", publisher))
+    elif entry_type == "book":
+        book_publisher = publisher or venue
+        if book_publisher:
+            fields.append(("publisher", book_publisher))
+    if note and "note" not in omitted:
         fields.append(("note", note))
-    fields.append(("file", str(pdf_path)))
+    if url and "url" not in omitted:
+        fields.append(("url", url))
+    if "file" not in omitted:
+        fields.append(("file", str(pdf_path)))
     lines = [f"@{entry_type}{{{key},"]
     for field_name, value in fields:
         lines.append(f"  {field_name} = {{{bibtex_escape(value)}}},")
@@ -1229,11 +1753,11 @@ class MetadataResolver:
             return None
 
     def metadata_from_crossref(self, message: dict[str, Any], default_abbr: str, collection_name: str) -> dict[str, Any]:
-        venue = normalize_space(((message.get("container-title") or [""])[0]))
+        venue = normalize_space(html.unescape(((message.get("container-title") or [""])[0])))
         doi = normalize_space(str(message.get("DOI") or "")).lower()
         abbr = infer_journal_abbr(venue, default_abbr)
         return {
-            "title": normalize_space(((message.get("title") or [""])[0])),
+            "title": normalize_space(html.unescape(((message.get("title") or [""])[0]))),
             "authors": author_list_from_crossref(message),
             "year": year_from_crossref(message),
             "venue": venue,
@@ -1244,14 +1768,16 @@ class MetadataResolver:
             "volume": normalize_space(str(message.get("volume") or "")),
             "issue": normalize_space(str(message.get("issue") or "")),
             "pages": normalize_pages(message),
-            "publisher": normalize_space(str(message.get("publisher") or "")),
+            "publisher": normalize_space(html.unescape(str(message.get("publisher") or ""))),
             "entry_type": entry_type_from_crossref(message, collection_name),
             "source": "crossref",
         }
 
     def metadata_from_openalex(self, item: dict[str, Any], default_abbr: str, collection_name: str) -> dict[str, Any]:
         doi = normalize_space(str(item.get("doi") or "")).replace("https://doi.org/", "").lower()
-        venue = normalize_space((((item.get("primary_location") or {}).get("source") or {}).get("display_name") or ""))
+        venue = normalize_space(
+            html.unescape((((item.get("primary_location") or {}).get("source") or {}).get("display_name") or ""))
+        )
         authors = [
             normalize_space(((author.get("author") or {}).get("display_name") or ""))
             for author in (item.get("authorships") or [])
@@ -1263,7 +1789,7 @@ class MetadataResolver:
         pages = f"{first_page}-{last_page}".strip("-") if first_page or last_page else ""
         abbr = infer_journal_abbr(venue, default_abbr)
         metadata = {
-            "title": normalize_space(str(item.get("display_name") or "")),
+            "title": normalize_space(html.unescape(str(item.get("display_name") or ""))),
             "authors": authors,
             "year": str(item.get("publication_year") or ""),
             "venue": venue,
@@ -1280,13 +1806,41 @@ class MetadataResolver:
         metadata["entry_type"] = infer_entry_type(metadata, collection_name)
         return metadata
 
+    def metadata_from_local_override(
+        self,
+        doi: str,
+        override: dict[str, Any],
+        extracted_abstract: str,
+        fallback_url: str,
+        collection_name: str,
+    ) -> dict[str, Any]:
+        venue = normalize_space(str(override.get("venue") or ""))
+        canonical_doi = normalize_space(str(override.get("doi") or doi)).lower()
+        metadata = {
+            "title": normalize_space(str(override.get("title") or "")),
+            "authors": [normalize_person_name(str(author)) for author in (override.get("authors") or []) if normalize_space(str(author))],
+            "year": normalize_space(str(override.get("year") or "")),
+            "venue": venue,
+            "journal_abbr": canonical_journal_abbr(str(override.get("journal_abbr") or ""), venue),
+            "doi": canonical_doi,
+            "url": normalize_space(str(override.get("url") or fallback_url or (f"https://doi.org/{canonical_doi}" if canonical_doi else ""))),
+            "abstract": extracted_abstract,
+            "volume": normalize_space(str(override.get("volume") or "")),
+            "issue": normalize_space(str(override.get("issue") or "")),
+            "pages": normalize_space(str(override.get("pages") or "")),
+            "publisher": normalize_space(str(override.get("publisher") or "")),
+            "source": "local-override",
+        }
+        metadata["entry_type"] = infer_entry_type(metadata, collection_name)
+        return metadata
+
     def normalize_note_metadata(self, data: dict[str, Any], collection_name: str) -> dict[str, Any]:
         authors = ensure_list(data.get("authors"))
         doi = normalize_space(str(data.get("doi") or "")).lower()
-        venue = normalize_space(str(data.get("venue") or ""))
+        venue = normalize_space(html.unescape(str(data.get("venue") or "")))
         abbr = infer_journal_abbr(venue, normalize_space(str(data.get("journal_abbr") or "")).lower())
         metadata = {
-            "title": normalize_space(str(data.get("title") or "")),
+            "title": normalize_space(html.unescape(str(data.get("title") or ""))),
             "authors": [normalize_space(str(author)) for author in authors if normalize_space(str(author))],
             "year": str(data.get("year") or ""),
             "venue": venue,
@@ -1297,7 +1851,7 @@ class MetadataResolver:
             "volume": "",
             "issue": "",
             "pages": "",
-            "publisher": normalize_space(str(data.get("publisher") or "")),
+            "publisher": normalize_space(html.unescape(str(data.get("publisher") or ""))),
             "source": "note",
         }
         metadata["entry_type"] = infer_entry_type(metadata, collection_name)
@@ -1309,12 +1863,35 @@ class MetadataResolver:
         pdf_title, pdf_author = title_from_pdf_metadata(pdf_path)
         extracted_abstract = extract_abstract_from_text(text)
         note_meta = self.normalize_note_metadata(note_data or {}, spec.category) if note_data else {}
+        local_doi = extract_doi(pdf_title, text)
         preserve_wp_note_metadata = parsed["abbr"] == "wp" and bool(note_meta.get("title")) and bool(note_meta.get("authors"))
+        override_doi = next(
+            (
+                doi
+                for doi in unique_preserve_order(
+                    [
+                        normalize_space(str(note_meta.get("doi") or "")).lower(),
+                        local_doi,
+                    ]
+                )
+                if doi and doi in LOCAL_DOI_METADATA_OVERRIDES
+            ),
+            "",
+        )
+        local_override = LOCAL_DOI_METADATA_OVERRIDES.get(override_doi)
+        if local_override:
+            return self.metadata_from_local_override(
+                override_doi,
+                local_override,
+                extracted_abstract,
+                f"https://doi.org/{override_doi}" if override_doi else "",
+                spec.category,
+            )
 
         doi_candidates = unique_preserve_order(
             [
                 normalize_space(str(note_meta.get("doi") or "")).lower(),
-                extract_doi(pdf_title, text),
+                local_doi,
             ]
         )
         for doi in doi_candidates:
@@ -1431,6 +2008,10 @@ def build_abbr_map(collections: list[CollectionSpec]) -> dict[str, str]:
 def title_needs_replacement(title: str, stem: str) -> bool:
     normalized = normalize_space(title)
     if not normalized:
+        return True
+    if normalized.lower() == "untitled":
+        return True
+    if normalized.lower() in {"introduction", "preface", "editorial", "foreword"}:
         return True
     if "metadata unresolved" in normalized.lower():
         return True
@@ -1904,8 +2485,14 @@ def merge_frontmatter(
     if not regions:
         regions = infer_regions(data["title"], str(metadata.get("abstract") or ""))
     data["regions"] = regions
-    data["entry_type"] = infer_entry_type({**metadata, **data}, spec.category)
-    data["journal_abbr"] = source_tag_slug({**metadata, **data}, str(data.get("journal_abbr") or metadata.get("journal_abbr") or ""), spec.category)
+    source_fields = {**data, **metadata} if prefer_metadata else {**metadata, **data}
+    fallback_source_abbr = (
+        str(metadata.get("journal_abbr") or data.get("journal_abbr") or "")
+        if prefer_metadata
+        else str(data.get("journal_abbr") or metadata.get("journal_abbr") or "")
+    )
+    data["entry_type"] = infer_entry_type(source_fields, spec.category)
+    data["journal_abbr"] = source_tag_slug(source_fields, fallback_source_abbr, spec.category)
     data["cases"] = ensure_list(data.get("cases"))
     data["projects"] = ensure_list(data.get("projects"))
     data["status"] = data.get("status") or "imported-metadata"
@@ -2243,8 +2830,11 @@ def write_folder_info(spec: CollectionSpec, pdf_count: int, note_count: int, rev
         folder_info_path.unlink()
 
 
-def write_bibliography(spec: CollectionSpec) -> None:
-    entries: list[str] = []
+def bibliography_entries_for_spec(
+    spec: CollectionSpec,
+    omit_fields: set[str] | None = None,
+) -> list[tuple[str, str]]:
+    entries: list[tuple[str, str]] = []
     note_paths = list_source_notes(spec.note_path)
     for pdf_path in sorted(spec.pdf_path.glob("*.pdf")):
         note_path = note_paths.get(pdf_path.stem)
@@ -2260,6 +2850,10 @@ def write_bibliography(spec: CollectionSpec) -> None:
                 "url": frontmatter.get("url") or "",
                 "publisher": frontmatter.get("publisher") or "",
                 "entry_type": frontmatter.get("entry_type") or note_entry_type(frontmatter, spec.category),
+                "volume": frontmatter.get("volume") or "",
+                "issue": frontmatter.get("issue") or "",
+                "pages": frontmatter.get("pages") or "",
+                "note": frontmatter.get("note") or "",
             }
         else:
             metadata = {
@@ -2271,11 +2865,58 @@ def write_bibliography(spec: CollectionSpec) -> None:
                 "doi": "",
                 "url": "",
                 "publisher": "",
+                "volume": "",
+                "issue": "",
+                "pages": "",
+                "note": "",
                 "entry_type": note_entry_type({}, spec.category),
             }
-        entries.append(build_bib_entry(pdf_path.stem, metadata, pdf_path, spec.category))
-    spec.bib_path.parent.mkdir(parents=True, exist_ok=True)
-    spec.bib_path.write_text("\n\n".join(entries) + "\n")
+        entries.append(
+            (
+                pdf_path.stem,
+                build_bib_entry(
+                    pdf_path.stem,
+                    metadata,
+                    pdf_path,
+                    spec.category,
+                    omit_fields=omit_fields,
+                ),
+            )
+        )
+    return entries
+
+
+def write_bibliography(collections: list[CollectionSpec]) -> Path:
+    deduped_entries: dict[str, str] = {}
+    for spec in collections:
+        for key, entry in bibliography_entries_for_spec(spec, omit_fields=BIB_OMIT_FIELDS):
+            deduped_entries[key] = entry
+    GLOBAL_BIB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ordered_entries = [deduped_entries[key] for key in sorted(deduped_entries)]
+    GLOBAL_BIB_PATH.write_text("\n\n".join(ordered_entries) + "\n", encoding="utf-8")
+    return GLOBAL_BIB_PATH
+
+
+def write_local_ref_bibliography(spec: CollectionSpec) -> Path:
+    deduped_entries: dict[str, str] = {}
+    for key, entry in bibliography_entries_for_spec(spec, omit_fields=BIB_OMIT_FIELDS):
+        deduped_entries[key] = entry
+    ref_path = spec.pdf_path / "ref.bib"
+    ordered_entries = [deduped_entries[key] for key in sorted(deduped_entries)]
+    ref_path.write_text("\n\n".join(ordered_entries) + "\n", encoding="utf-8")
+    return ref_path
+
+
+def remove_legacy_bibliographies() -> int:
+    removed = 0
+    if not REFERENCE_ROOT.exists():
+        return removed
+    for bib_path in REFERENCE_ROOT.glob("*.bib"):
+        if bib_path == GLOBAL_BIB_PATH:
+            continue
+        bib_path.unlink(missing_ok=True)
+        removed += 1
+    return removed
 
 
 def pending_journal_source_rows(collections: list[CollectionSpec]) -> list[dict[str, Any]]:
@@ -2398,20 +3039,28 @@ def normalize_pdf_filenames(
             continue
         note_path = note_paths.get(pdf_path.stem)
         note_data = load_note(note_path)[0] if note_path and note_path.exists() else None
+        note_title = normalize_space(str((note_data or {}).get("title") or ""))
         should_resolve = (
             not looks_standardized_stem(strip_copy_suffix(pdf_path.stem))
             or bool(parse_stem(pdf_path.stem)["copy_suffix"])
             or note_path is None
             or note_is_stub(note_path)
+            or title_needs_replacement(note_title, pdf_path.stem)
         )
         if should_resolve:
             metadata = resolver.resolve_metadata(pdf_path, spec, note_data)
         else:
             metadata = resolver.normalize_note_metadata(note_data or {}, spec.category)
         metadata["category"] = spec.category
+        current_stem = pdf_path.stem
+
+        # Avoid renaming already-standardized files when metadata only comes
+        # from local fallback heuristics, which is common during offline runs.
+        if looks_standardized_stem(strip_copy_suffix(current_stem)) and metadata.get("source") == "fallback":
+            continue
+
         desired_stem = build_desired_stem(pdf_path.stem, metadata)
         desired_path = spec.pdf_path / f"{desired_stem}.pdf"
-        current_stem = pdf_path.stem
 
         if desired_path == pdf_path:
             continue
@@ -2513,8 +3162,6 @@ def sync_collection(spec: CollectionSpec, resolver: MetadataResolver, folder_map
                 refresh_note_file(new_note_path, pdf_path, spec, metadata, folder_map, current_aliases)
             created_notes += 1
 
-    write_bibliography(spec)
-
     note_paths = list_source_notes(spec.note_path)
     metadata_review_count = 0
     for note_path in note_paths.values():
@@ -2537,7 +3184,7 @@ def sync_collection(spec: CollectionSpec, resolver: MetadataResolver, folder_map
         "rename_rows": rename_rows,
         "archive_rows": archive_rows,
         "review_rows": review_rows,
-        "bib_path": str(spec.bib_path),
+        "bib_path": str(GLOBAL_BIB_PATH),
     }
 
 
@@ -2562,6 +3209,11 @@ def parse_args() -> argparse.Namespace:
         action="append",
         help="Process only a specific PDF folder, note folder, or category name.",
     )
+    parser.add_argument(
+        "--write-local-ref",
+        action="store_true",
+        help="Also write a local ref.bib (without DOI fields) inside each processed collection folder.",
+    )
     return parser.parse_args()
 
 
@@ -2572,15 +3224,17 @@ def main() -> None:
     REFERENCE_ROOT.mkdir(parents=True, exist_ok=True)
     REPORT_ROOT.mkdir(parents=True, exist_ok=True)
     removed_zero_byte = clean_zero_byte_duplicate_notes()
+    all_collections = discover_collections()
     collections = discover_collections(filters)
     folder_map = build_pdf_folder_map(collections)
-    abbr_map = build_abbr_map(collections)
+    abbr_map = build_abbr_map(all_collections)
     resolver = MetadataResolver(abbr_map)
 
     summaries: list[dict[str, Any]] = []
     rename_rows: list[dict[str, Any]] = []
     archive_rows: list[dict[str, Any]] = []
     review_rows: list[dict[str, Any]] = []
+    local_ref_paths: list[Path] = []
 
     for spec in collections:
         summary = sync_collection(spec, resolver, folder_map)
@@ -2588,12 +3242,16 @@ def main() -> None:
         rename_rows.extend(summary["rename_rows"])
         archive_rows.extend(summary["archive_rows"])
         review_rows.extend(summary["review_rows"])
+        if args.write_local_ref:
+            local_ref_paths.append(write_local_ref_bibliography(spec))
         print(
             f"{spec.pdf_dir}: pdfs={summary['pdf_count']}, notes={summary['note_count']}, "
             f"created={summary['created_notes']}, updated={summary['updated_notes']}, "
             f"review={summary['metadata_review_count']}"
         )
 
+    bibliography_path = write_bibliography(all_collections)
+    removed_legacy_bibs = remove_legacy_bibliographies()
     repaired_note_links = repair_all_note_links(collections)
     related_updates = update_related_sections(collections)
     pending_sources_path = write_pending_journal_sources(collections)
@@ -2616,12 +3274,18 @@ def main() -> None:
 
     print(f"Zero-byte notes removed: {removed_zero_byte}")
     print(f"Collections processed: {len(summaries)}")
+    print(f"Unified bibliography: {bibliography_path}")
+    print(f"Legacy bibliographies removed: {removed_legacy_bibs}")
     print(f"Renamed PDFs: {len(rename_rows)}")
     print(f"Archived duplicate PDFs: {len(archive_rows)}")
     print(f"Duplicate review items: {len(review_rows)}")
     print(f"Repaired note links: {repaired_note_links}")
     print(f"Updated related sections: {related_updates}")
     print(f"Pending journal source queue: {pending_sources_path}")
+    if local_ref_paths:
+        print("Local ref bibliographies:")
+        for ref_path in local_ref_paths:
+            print(f"- {ref_path}")
 
 
 if __name__ == "__main__":
