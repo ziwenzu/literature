@@ -1,0 +1,262 @@
+prefix = "rdd_other_ps_econ_2021_2026"
+output_dir = "/Users/ziwenzu/Library/CloudStorage/Dropbox/Literature/rdd"
+
+keywords = [
+  "regression discontinuity",
+  "regression discontinuity design",
+  "regression-discontinuity",
+  "regression-discontinuity design",
+  "RDD",
+]
+
+search_queries = [
+  "regression discontinuity",
+  "regression discontinuity design",
+  "RDD",
+]
+
+discovery_providers = ["openalex", "crossref"]
+openalex_discovery_strategies = ["search", "title_search"]
+match_fields = ["title", "abstract"]
+match_mode = "any"
+year_cutoff = 2021
+
+download_pdfs = false
+download_workers = 4
+
+write_candidates_jsonl = true
+write_summary_json = true
+dry_run = true
+
+respect_robots_txt = true
+api_request_delay_seconds = 0.2
+html_request_delay_seconds = 1.0
+request_jitter_seconds = 0.2
+anti_bot_backoff_seconds = 20.0
+
+include_pending_sources = false
+
+[[journals]]
+code = "CPS"
+display_name = "Comparative Political Studies"
+openalex_source_id = "S105556297"
+filename_slug = "cps"
+publisher = "SAGE"
+publisher_domains = ["journals.sagepub.com"]
+title_aliases = []
+
+[[journals]]
+code = "QJPS"
+display_name = "Quarterly Journal of Political Science"
+openalex_source_id = "S44648735"
+filename_slug = "qjps"
+publisher = "Now Publishers"
+publisher_domains = ["nowpublishers.com"]
+title_aliases = []
+
+[[journals]]
+code = "JEPS"
+display_name = "Journal of Experimental Political Science"
+openalex_source_id = "S4210184980"
+filename_slug = "jeps"
+publisher = "Cambridge University Press"
+publisher_domains = ["cambridge.org"]
+title_aliases = []
+
+[[journals]]
+code = "CQ"
+display_name = "The China Quarterly"
+openalex_source_id = "S12189451"
+filename_slug = "cq"
+publisher = "Cambridge University Press"
+publisher_domains = ["cambridge.org", "jstor.org"]
+title_aliases = ["China Quarterly"]
+
+[[journals]]
+code = "JCC"
+display_name = "Journal of Contemporary China"
+openalex_source_id = "S102994345"
+filename_slug = "jcc"
+publisher = "Taylor & Francis"
+publisher_domains = ["tandfonline.com"]
+title_aliases = []
+
+[[journals]]
+code = "WP"
+display_name = "World Politics"
+openalex_source_id = "S143110675"
+filename_slug = "wp"
+publisher = "Cambridge University Press"
+publisher_domains = ["cambridge.org", "jstor.org"]
+title_aliases = []
+
+[[journals]]
+code = "IO"
+display_name = "International Organization"
+openalex_source_id = "S160686149"
+filename_slug = "io"
+publisher = "Cambridge University Press"
+publisher_domains = ["cambridge.org", "jstor.org"]
+title_aliases = []
+
+[[journals]]
+code = "BJPS"
+display_name = "British Journal of Political Science"
+openalex_source_id = "S95691132"
+filename_slug = "bjps"
+publisher = "Cambridge University Press"
+publisher_domains = ["cambridge.org", "jstor.org"]
+title_aliases = []
+
+[[journals]]
+code = "PAN"
+display_name = "Political Analysis"
+openalex_source_id = "S29331042"
+filename_slug = "pan"
+publisher = "Cambridge University Press"
+publisher_domains = ["cambridge.org", "academic.oup.com", "oup.com", "oxfordjournals.org"]
+title_aliases = []
+
+[[journals]]
+code = "PSRM"
+display_name = "Political Science Research and Methods"
+openalex_source_id = "S2764571748"
+filename_slug = "psrm"
+publisher = "Cambridge University Press"
+publisher_domains = ["cambridge.org"]
+title_aliases = []
+
+[[journals]]
+code = "AER"
+display_name = "American Economic Review"
+openalex_source_id = "S23254222"
+filename_slug = "aer"
+publisher = "American Economic Association"
+publisher_domains = ["aeaweb.org"]
+title_aliases = []
+
+[[journals]]
+code = "AEJAPPLIED"
+display_name = "American Economic Journal: Applied Economics"
+openalex_source_id = "S42893225"
+filename_slug = "aejapplied"
+publisher = "American Economic Association"
+publisher_domains = ["aeaweb.org"]
+title_aliases = []
+
+[[journals]]
+code = "AEJPOLICY"
+display_name = "American Economic Journal: Economic Policy"
+openalex_source_id = "S158011328"
+filename_slug = "aejpolicy"
+publisher = "American Economic Association"
+publisher_domains = ["aeaweb.org"]
+title_aliases = []
+
+[[journals]]
+code = "AEJMACRO"
+display_name = "American Economic Journal: Macroeconomics"
+openalex_source_id = "S170166683"
+filename_slug = "aejmacro"
+publisher = "American Economic Association"
+publisher_domains = ["aeaweb.org"]
+title_aliases = []
+
+[[journals]]
+code = "AEJMICRO"
+display_name = "American Economic Journal: Microeconomics"
+openalex_source_id = "S96919139"
+filename_slug = "aejmicro"
+publisher = "American Economic Association"
+publisher_domains = ["aeaweb.org"]
+title_aliases = []
+
+[[journals]]
+code = "AEJINSIGHTS"
+display_name = "American Economic Review Insights"
+openalex_source_id = "S4210174288"
+filename_slug = "aejinsights"
+publisher = "American Economic Association"
+publisher_domains = ["aeaweb.org"]
+title_aliases = []
+
+[[journals]]
+code = "JPE"
+display_name = "Journal of Political Economy"
+openalex_source_id = "S95323914"
+filename_slug = "jpe"
+publisher = "University of Chicago Press"
+publisher_domains = ["journals.uchicago.edu"]
+title_aliases = []
+
+[[journals]]
+code = "JPUBECO"
+display_name = "Journal of Public Economics"
+openalex_source_id = "S199447588"
+filename_slug = "jpubeco"
+publisher = "Elsevier"
+publisher_domains = ["sciencedirect.com", "elsevier.com"]
+title_aliases = ["Journal of Public Economics"]
+
+[[journals]]
+code = "JDE"
+display_name = "Journal of Development Economics"
+openalex_source_id = "S101209419"
+filename_slug = "jde"
+publisher = "Elsevier"
+publisher_domains = ["sciencedirect.com", "elsevier.com"]
+title_aliases = []
+
+[[journals]]
+code = "ECONOMETRICA"
+display_name = "Econometrica"
+openalex_source_id = "S95464858"
+filename_slug = "econometrica"
+publisher = "Wiley"
+publisher_domains = ["onlinelibrary.wiley.com", "wiley.com"]
+title_aliases = []
+
+[[journals]]
+code = "QJE"
+display_name = "The Quarterly Journal of Economics"
+openalex_source_id = "S203860005"
+filename_slug = "qje"
+publisher = "Oxford University Press"
+publisher_domains = ["academic.oup.com"]
+title_aliases = ["Quarterly Journal of Economics"]
+
+[[journals]]
+code = "RESTUD"
+display_name = "The Review of Economic Studies"
+openalex_source_id = "S88935262"
+filename_slug = "restud"
+publisher = "Oxford University Press"
+publisher_domains = ["academic.oup.com"]
+title_aliases = ["Review of Economic Studies"]
+
+[[journals]]
+code = "RESTAT"
+display_name = "The Review of Economics and Statistics"
+openalex_source_id = "S180061323"
+filename_slug = "restat"
+publisher = "MIT Press"
+publisher_domains = ["direct.mit.edu", "mitpressjournals.org"]
+title_aliases = ["Review of Economics and Statistics"]
+
+[[journals]]
+code = "JEEA"
+display_name = "Journal of the European Economic Association"
+openalex_source_id = "S165087003"
+filename_slug = "jeea"
+publisher = "Oxford University Press"
+publisher_domains = ["academic.oup.com"]
+title_aliases = []
+
+[[journals]]
+code = "EJ"
+display_name = "The Economic Journal"
+openalex_source_id = "S45992627"
+filename_slug = "ej"
+publisher = "Oxford University Press"
+publisher_domains = ["academic.oup.com"]
+title_aliases = ["Economic Journal"]
