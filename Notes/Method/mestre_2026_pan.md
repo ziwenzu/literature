@@ -30,7 +30,7 @@ doi: 10.1017/pan.2025.10031
 url: https://doi.org/10.1017/pan.2025.10031
 zotero_key: ''
 date_added: '2026-03-17'
-last_reviewed: '2026-03-26'
+last_reviewed: '2026-04-07'
 tags:
 - literature
 - source-note
@@ -42,7 +42,7 @@ tags:
 # Potential and Pitfalls of Audio as Data for Political Research: Alignment, Features, and Classification Models
 
 ## Metadata Status
-- Synced on 2026-03-26 from local PDF and metadata lookup.
+- Synced on 2026-04-07 from local PDF and metadata lookup.
 - Core citation fields were refreshed from the PDF and external metadata.
 
 ## Basic Information
@@ -51,7 +51,6 @@ tags:
 - Venue: Political Analysis
 - DOI: 10.1017/pan.2025.10031
 - PDF: [[Method/mestre_2026_pan.pdf]]
-- Volume / Issue / Pages:  /  / 1-17
 
 ## Abstract / Extracted Summary
 Abstract Political science is a field rich in multimodal information sources, from televised debates to parliamentary briefings. This paper bridges a gap between computer and political science in multimodal data analysis using audio. The adoption of multimodal analyses in political science (e.g., video/audio with text-as-data approaches) has been relatively slow due to unequal distribution of computational power and skills needed. We provide solutions to challenges encountered when analyzing audio, advancing the potential for multimodal data analysis in political science. Using a dataset of all televised U.S. presidential debates from 1960 to 2020, we focus on three features encountered when analyzing audio data: low-level descriptors (LLDs), such as pitch or energy; Mel-frequency cepstral coefficients (MFCCs); and audio embeddings/encodings, like Wav2Vec. We showcase four applications: (a) forced alignment of audio text using MFCCs, time-stamping transcripts, and speaker information; (b) speech characterization using LLDs; (c) custom-made classification models with audio embeddings and MFCCs; and (d) emotional recognition models using Wav2Vec for classification of discrete emotions and their valence-arousal dominance. We provide explanations to help understand how these features can be applied for different political research questions and advice on vigilance to naive interpretation, for both experienced researchers and those who want to start working with audio.
@@ -60,9 +59,9 @@ Abstract Political science is a field rich in multimodal information sources, fr
 -
 
 ## Related Literature
+- [[Notes/Method/benoit_2026_ajps|Using large language models to analyze political texts through natural language understanding]]  | shared: computational text analysis, models
 - [[Notes/Method/zhang_2026_wp|Vibe Researching as Wolf Coming: Can AI Agents with Skills Replace or Augment Social Scientists?]]  | shared: computational text analysis, science
-- [[Notes/China Censorship Propaganda and Public Opinion/cirone_2023_psrm|Asymmetric flooding as a tool for foreign influence on social media]]  | shared: computational text analysis, research
-- [[Notes/Social_Media/cirone_2023_psrm|Asymmetric flooding as a tool for foreign influence on social media]]  | shared: computational text analysis, research
-- [[Notes/Lawyers and Courts/bailey_2025_apsr|The Effect of Judicial Decisions on Issue Salience and Legal Consciousness in Media Serving the LGBTQ+ Community]]  | shared: computational text analysis
-- [[Notes/Social_Media/fujiwara_2024_jeea|The Effect of Social Media on Elections: Evidence from The United States]]  | shared: computational text analysis
-- [[Notes/Developing Country Bureaucracy and Accountability/garfias_2022_ajps|When State Building Backfires: Elite Coordination and Popular Grievance in Rebellion]]  | shared: computational text analysis
+- [[Notes/Method/bartik_2023_sej|The Costs of Housing Regulation: Evidence from Generative Regulatory Measurement]]  | shared: analysis, classification, models
+- [[Notes/Method/ornstein_2025_psrm|How to train your stochastic parrot: large language models for political texts]]  | shared: analysis, data, models
+- [[Notes/Method/asirvatham_2026_wp|GPT as a Measurement Tool]]  | shared: classification, data
+- [[Notes/Method/baker_2026_misc|Data and Code For: Difference-in-Differences Designs: A Practitioner's Guide]]  | shared: data, research

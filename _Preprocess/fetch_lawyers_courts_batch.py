@@ -196,16 +196,16 @@ def sanitize_filename_component(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", value)
     ascii_value = normalized.encode("ascii", "ignore").decode("ascii")
     slug = re.sub(r"[^A-Za-z0-9]+", "_", ascii_value).strip("_").lower()
-    return slug or "unknown"
+    return slug or "source"
 
 
 def first_author_surname(item: dict) -> str:
     authorships = item.get("authorships") or []
     if not authorships:
-        return "unknown"
+        return "source"
     display_name = ((authorships[0].get("author") or {}).get("display_name") or "").strip()
     if not display_name:
-        return "unknown"
+        return "source"
     surname = display_name.split()[-1]
     return sanitize_filename_component(surname)
 
@@ -480,7 +480,7 @@ def download_pdf(session: requests.Session, item: dict) -> tuple[Path | None, st
             continue
 
         if maybe_pdf_response(response):
-            year = item.get("publication_year") or "unknown"
+            year = item.get("publication_year") or "undated"
             filename = f"{first_author_surname(item)}_{year}_{item['__source_slug']}.pdf"
             path = unique_path(OUTPUT_DIR / filename)
             path.write_bytes(response.content)
@@ -488,7 +488,7 @@ def download_pdf(session: requests.Session, item: dict) -> tuple[Path | None, st
 
         content_type = (response.headers.get("content-type") or "").lower()
         if "html" not in content_type:
-            last_note = f"{final_url}: non-PDF content-type {content_type or 'unknown'}"
+            last_note = f"{final_url}: non-PDF content-type {content_type or 'unspecified'}"
             continue
 
         for pdf_url in dedupe(extract_html_pdf_candidates(response.text, final_url) + guessed_pdf_urls(final_url)):
@@ -504,7 +504,7 @@ def download_pdf(session: requests.Session, item: dict) -> tuple[Path | None, st
                 last_note = f"{pdf_response.url}: HTML page without PDF payload"
                 continue
 
-            year = item.get("publication_year") or "unknown"
+            year = item.get("publication_year") or "undated"
             filename = f"{first_author_surname(item)}_{year}_{item['__source_slug']}.pdf"
             path = unique_path(OUTPUT_DIR / filename)
             path.write_bytes(pdf_response.content)

@@ -209,6 +209,7 @@ KNOWN_JOURNALS = {
     "aejpolicy": "American Economic Journal: Economic Policy",
     "ajls": "Asian Journal of Law and Society",
     "ajps": "American Journal of Political Science",
+    "as": "Administrative Sciences",
     "apsr": "American Political Science Review",
     "arlss": "Annual Review of Law and Social Science",
     "arps": "Annual Review of Political Science",
@@ -217,20 +218,33 @@ KNOWN_JOURNALS = {
     "cjls": "Canadian Journal of Law and Society / La Revue Canadienne Droit et Société",
     "cq": "The China Quarterly",
     "cps": "Comparative Political Studies",
+    "dcm": "Discourse, Context & Media",
+    "democrat": "Democratization",
     "ecma": "Econometrica",
     "eeh": "Explorations in Economic History",
     "ehdr": "Economic History of Developing Regions",
     "ej": "The Economic Journal",
     "ejdr": "The European Journal of Development Research",
+    "giq": "Government Information Quarterly",
+    "gmc": "Global Media and Communication",
     "hofstra": "Hofstra Law Review",
+    "hssc": "Humanities and Social Sciences Communications",
     "imago": "Imago Mundi",
+    "im": "Information & Management",
     "io": "International Organization",
+    "isq": "International Studies Quarterly",
     "itinerario": "Itinerario",
     "jde": "Journal of Development Economics",
     "jeh": "The Journal of Economic History",
     "jeg": "Journal of Economic Geography",
     "jgh": "Journal of Global History",
     "ijpor": "International Journal of Public Opinion Research",
+    "jc": "Journal of Communication",
+    "jcca": "Journal of Current Chinese Affairs",
+    "jd": "Journal of Democracy",
+    "jeas": "Journal of East Asian Studies",
+    "jep": "Journal of Economic Perspectives",
+    "jpipe": "Journal of Political Institutions and Political Economy",
     "jas": "The Journal of Asian Studies",
     "jcc": "Journal of Contemporary China",
     "jcr": "Journal of Conflict Resolution",
@@ -246,12 +260,20 @@ KNOWN_JOURNALS = {
     "jpubeco": "Journal of Public Economics",
     "lsi": "Law & Social Inquiry",
     "lsr": "Law & Society Review",
+    "ms": "Management Science",
+    "nhb": "Nature Human Behaviour",
     "pan": "Political Analysis",
+    "pacai": "Proceedings of the AAAI Conference on Artificial Intelligence",
+    "pi": "Policy & Internet",
     "polgeo": "Political Geography",
     "polbeh": "Political Behavior",
     "polcomm": "Political Communication",
     "poq": "Public Opinion Quarterly",
     "polgender": "Politics & Gender",
+    "pnas": "Proceedings of the National Academy of Sciences",
+    "pp": "Perspectives on Politics",
+    "ppmr": "Public Performance & Management Review",
+    "ps": "Politics & Society",
     "psrm": "Political Science Research and Methods",
     "qjps": "Quarterly Journal of Political Science",
     "qje": "Quarterly Journal of Economics",
@@ -263,7 +285,9 @@ KNOWN_JOURNALS = {
     "arsoc": "Annual Review of Sociology",
     "rsue": "Regional Science and Urban Economics",
     "rte": "Research in Transportation Economics",
+    "sej": "SSRN Electronic Journal",
     "ssh": "Social Science History",
+    "wd": "World Development",
     "wpol": "World Politics",
 }
 
@@ -386,17 +410,32 @@ LOCAL_VENUE_ALIASES = {
     "american political science review": "apsr",
     "american journal of political science": "ajps",
     "american j political sci": "ajps",
+    "administrative sciences": "as",
     "the journal of politics": "jop",
     "journal of politics": "jop",
     "journal of public administration research and theory": "jpart",
     "british journal of political science": "bjps",
     "b j pol s": "bjps",
     "comparative political studies": "cps",
+    "democratization": "democrat",
+    "discourse, context & media": "dcm",
+    "global media and communication": "gmc",
+    "government information quarterly": "giq",
+    "humanities and social sciences communications": "hssc",
+    "information & management": "im",
+    "information and management": "im",
+    "international studies quarterly": "isq",
     "quarterly journal of political science": "qjps",
     "journal of experimental political science": "jeps",
     "the china quarterly": "cq",
     "china quarterly": "cq",
     "journal of contemporary china": "jcc",
+    "journal of communication": "jc",
+    "journal of current chinese affairs": "jcca",
+    "journal of democracy": "jd",
+    "journal of east asian studies": "jeas",
+    "journal of economic perspectives": "jep",
+    "journal of political institutions and political economy": "jpipe",
     "world politics": "wpol",
     "international organization": "io",
     "canadian journal of law and society": "cjls",
@@ -405,10 +444,19 @@ LOCAL_VENUE_ALIASES = {
     "hofstra law review": "hofstra",
     "the journal of asian studies": "jas",
     "journal of asian studies": "jas",
+    "management science": "ms",
+    "nature human behaviour": "nhb",
     "political analysis": "pan",
     "political geography": "polgeo",
     "political behavior": "polbeh",
     "political science research and methods": "psrm",
+    "policy & internet": "pi",
+    "proceedings of the aaai conference on artificial intelligence": "pacai",
+    "proceedings of the national academy of sciences": "pnas",
+    "proceedings of the national academy of sciences of the united states of america": "pnas",
+    "perspectives on politics": "pp",
+    "public performance & management review": "ppmr",
+    "politics & society": "ps",
     "public opinion quarterly": "poq",
     "annual review of political science": "arps",
     "annual review of psychology": "arpsych",
@@ -446,7 +494,9 @@ LOCAL_VENUE_ALIASES = {
     "itinerario": "itinerario",
     "regional science and urban economics": "rsue",
     "research in transportation economics": "rte",
+    "ssrn electronic journal": "sej",
     "social science history": "ssh",
+    "world development": "wd",
     "byzantine and modern greek studies": "bmgs",
 }
 
@@ -458,6 +508,7 @@ DOI_JOURNAL_PATTERNS = [
     (re.compile(r"10\.1093/jopart/", re.IGNORECASE), "jpart"),
     (re.compile(r"10\.1093/ijpor/", re.IGNORECASE), "ijpor"),
     (re.compile(r"10\.1017/pan\.|10\.1093/pan/", re.IGNORECASE), "pan"),
+    (re.compile(r"10\.1073/pnas\.", re.IGNORECASE), "pnas"),
     (re.compile(r"10\.1007/s11109-", re.IGNORECASE), "polbeh"),
     (re.compile(r"10\.1093/poq/", re.IGNORECASE), "poq"),
     (re.compile(r"10\.1017/s00071234", re.IGNORECASE), "bjps"),
@@ -715,6 +766,78 @@ LOCAL_DOI_METADATA_OVERRIDES = {
         "pages": "391-408",
         "publisher": "Annual Reviews",
     },
+    "10.2139/ssrn.6166866": {
+        "title": "Local Knowledge and State Building: Evidence from Chinese Gazeteers",
+        "authors": ["Xinxian Li", "Ningxi Liu", "Chicheng Ma"],
+        "year": "2026",
+        "venue": "CQH Working Paper Series",
+        "journal_abbr": "wp",
+        "publisher": "CQH Working Paper Series",
+        "url": "https://doi.org/10.2139/ssrn.6166866",
+    },
+    "10.2139/ssrn.4424060": {
+        "title": "Political Repression and Nation-building",
+        "authors": ["Peiyuan Li"],
+        "year": "2025",
+        "venue": "CQH Working Paper Series",
+        "journal_abbr": "wp",
+        "publisher": "CQH Working Paper Series",
+        "url": "https://doi.org/10.2139/ssrn.4424060",
+    },
+    "10.2139/ssrn.4508254": {
+        "title": "The Economics of Mobilizing Free Riders: Evidence from the Chinese Civil War 1945-1949",
+        "authors": ["Peiyuan Li"],
+        "year": "2026",
+        "venue": "CQH Working Paper Series",
+        "journal_abbr": "wp",
+        "publisher": "CQH Working Paper Series",
+        "url": "https://doi.org/10.2139/ssrn.4508254",
+    },
+    "10.2139/ssrn.5195597": {
+        "title": "Christian Missionaries and International Trade, 1580-1936",
+        "authors": ["Zhiwu Chen", "Xinhao Li", "Chicheng Ma"],
+        "year": "2025",
+        "venue": "CQH Working Paper Series",
+        "journal_abbr": "wp",
+        "publisher": "Centre for Quantitative History, HKU Business School",
+        "url": "https://doi.org/10.2139/ssrn.5195597",
+    },
+    "10.2139/ssrn.5270912": {
+        "title": "Telegraph, Media, and State Information Capacity: Evidence from Late Imperial China",
+        "authors": ["Yu Hao", "Yuxiang Wang"],
+        "year": "2025",
+        "venue": "CQH Working Paper Series",
+        "journal_abbr": "wp",
+        "publisher": "Centre for Quantitative History, HKU Business School",
+        "url": "https://doi.org/10.2139/ssrn.5270912",
+    },
+    "10.2139/ssrn.4932600": {
+        "title": "Article-Level Slant and Polarization of News Consumption on Social Media",
+        "authors": ["Luca Braghieri", "Sarah Eichmeyer", "Ro'ee Levy", "Markus Mobius", "Jacob Steinhardt", "Ruiqi Zhong"],
+        "year": "2025",
+        "venue": "Working paper",
+        "journal_abbr": "wp",
+        "url": "https://doi.org/10.2139/ssrn.4932600",
+    },
+    "10.48550/arxiv.2404.01566": {
+        "title": "Heterogeneous Treatment Effects and Causal Mechanisms",
+        "authors": ["Jiawei Fu", "Tara Slough"],
+        "year": "2026",
+        "venue": "American Political Science Review",
+        "journal_abbr": "apsr",
+        "doi": "10.1017/S0003055426101580",
+        "url": "https://doi.org/10.1017/S0003055426101580",
+        "publisher": "Cambridge University Press",
+    },
+    "10.3386/w35011": {
+        "title": "Knowledge Spillovers and Local Outcomes: An Existence Proof from the Establishment of the National Labs",
+        "authors": ["Susan Helper", "Resem Makan", "Daniel W. Shoag"],
+        "year": "2026",
+        "venue": "NBER Working Paper",
+        "journal_abbr": "wp",
+        "publisher": "National Bureau of Economic Research",
+        "url": "https://doi.org/10.3386/w35011",
+    },
 }
 AUDIT_TAG_PATTERNS = {
     "audit-study": [
@@ -815,6 +938,70 @@ def normalize_title(text: str) -> str:
 
 def normalize_person_name(text: str) -> str:
     return normalize_space(html.unescape(text))
+
+
+PLACEHOLDER_AUTHOR_SLUGS = {
+    "anonymous",
+    "anon",
+    "unknown",
+    "unknown_author",
+    "author",
+    "authors",
+    "metadata_unresolved",
+}
+
+TITLE_FALLBACK_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "by",
+    "for",
+    "from",
+    "in",
+    "of",
+    "on",
+    "the",
+    "to",
+    "with",
+    "without",
+}
+
+
+def is_placeholder_author(name: str) -> bool:
+    slug = slugify(normalize_person_name(name)).replace("-", "_")
+    if not slug:
+        return True
+    return slug in PLACEHOLDER_AUTHOR_SLUGS
+
+
+def cleaned_authors(values: Any) -> list[str]:
+    authors: list[str] = []
+    seen: set[str] = set()
+    for value in ensure_list(values):
+        author = normalize_person_name(str(value))
+        if not author or is_placeholder_author(author):
+            continue
+        key = normalize_title(author)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        authors.append(author)
+    return authors
+
+
+def title_fallback_slug(title: str, fallback: str = "source") -> str:
+    ascii_title = unicodedata.normalize("NFKD", title or "").encode("ascii", "ignore").decode("ascii")
+    for token in re.findall(r"[A-Za-z0-9]+", ascii_title):
+        normalized = slugify(token).replace("-", "_")
+        if (
+            normalized
+            and normalized not in TITLE_FALLBACK_STOPWORDS
+            and normalized not in PLACEHOLDER_AUTHOR_SLUGS
+            and not re.fullmatch(r"(19|20)\d{2}", normalized)
+        ):
+            return normalized
+    fallback_slug = slugify(fallback).replace("-", "_")
+    return fallback_slug or "source"
 
 
 def normalize_name_token(token: str, lowercase_prefixes: bool) -> str:
@@ -1390,7 +1577,7 @@ def infer_journal_abbr(venue: str, fallback: str = "") -> str:
     return fallback
 
 
-def unknown_journal_slug(venue: str) -> str:
+def fallback_journal_slug(venue: str) -> str:
     venue = normalize_space(html.unescape(venue))
     if not venue:
         return ""
@@ -1414,7 +1601,7 @@ def source_tag_slug(metadata: dict[str, Any], fallback_abbr: str, collection_nam
         return known
     entry_type = infer_entry_type(metadata, collection_name)
     if entry_type == "article" and venue:
-        return unknown_journal_slug(venue)
+        return fallback_journal_slug(venue)
     return canonical_journal_abbr(fallback_abbr, venue)
 
 
@@ -1505,7 +1692,7 @@ def classify_name_suffix(metadata: dict[str, Any], fallback_abbr: str, collectio
         return "wp"
 
     if normalize_space(str(metadata.get("entry_type") or "")).lower() == "article" and venue:
-        return unknown_journal_slug(venue) or "misc"
+        return fallback_journal_slug(venue) or "misc"
     if working_paper_like(metadata):
         return "wp"
     if book_like(metadata):
@@ -1514,7 +1701,7 @@ def classify_name_suffix(metadata: dict[str, Any], fallback_abbr: str, collectio
     if entry_type == "techreport":
         return "wp"
     if entry_type == "article" and venue:
-        return unknown_journal_slug(venue) or "misc"
+        return fallback_journal_slug(venue) or "misc"
     return "misc"
 
 
@@ -1852,7 +2039,7 @@ class MetadataResolver:
         abbr = infer_journal_abbr(venue, normalize_space(str(data.get("journal_abbr") or "")).lower())
         metadata = {
             "title": normalize_space(html.unescape(str(data.get("title") or ""))),
-            "authors": [normalize_space(str(author)) for author in authors if normalize_space(str(author))],
+            "authors": cleaned_authors(authors),
             "year": str(data.get("year") or ""),
             "venue": venue,
             "journal_abbr": abbr,
@@ -1921,9 +2108,10 @@ class MetadataResolver:
             )
             if not title:
                 title = normalize_space(pdf_path.stem.replace("_", " "))
+            resolved_authors = cleaned_authors(note_meta.get("authors") or ([pdf_author] if normalize_space(pdf_author) else []))
             metadata = {
                 "title": title,
-                "authors": note_meta.get("authors") or ([pdf_author] if normalize_space(pdf_author) else []),
+                "authors": resolved_authors,
                 "year": normalize_space(str(note_meta.get("year") or parsed["year"])),
                 "venue": normalize_space(str(note_meta.get("venue") or self.abbr_map.get(parsed["abbr"], ""))),
                 "journal_abbr": canonical_journal_abbr(str(note_meta.get("journal_abbr") or parsed["abbr"]), str(note_meta.get("venue") or "")),
@@ -1947,10 +2135,13 @@ class MetadataResolver:
                 title_from_text(text),
             ]
         )
+        resolved_note_authors = cleaned_authors(note_meta.get("authors"))
+        resolved_pdf_authors = cleaned_authors([pdf_author] if normalize_space(pdf_author) else [])
         author_token = ""
-        if note_meta.get("authors"):
-            author_token = first_author_slug(str((note_meta.get("authors") or [""])[0]))
-        author_token = author_token or parsed["author"]
+        if resolved_note_authors:
+            author_token = first_author_slug(str(resolved_note_authors[0]))
+        parsed_author = parsed["author"] if not is_placeholder_author(parsed["author"]) else ""
+        author_token = author_token or parsed_author
         venue = normalize_space(str(note_meta.get("venue") or self.abbr_map.get(parsed["abbr"], "")))
 
         for title in title_candidates:
@@ -1970,7 +2161,7 @@ class MetadataResolver:
                 return meta
 
         title = next((title for title in title_candidates if title), "")
-        authors = note_meta.get("authors") or ([pdf_author] if normalize_space(pdf_author) else [])
+        authors = resolved_note_authors or resolved_pdf_authors
         year = normalize_space(str(note_meta.get("year") or parsed["year"]))
         venue = normalize_space(str(note_meta.get("venue") or self.abbr_map.get(parsed["abbr"], "")))
         abbr = infer_journal_abbr(venue, note_meta.get("journal_abbr", "") or parsed["abbr"])
@@ -2033,9 +2224,11 @@ def title_needs_replacement(title: str, stem: str) -> bool:
 
 def build_desired_stem(current_stem: str, metadata: dict[str, Any]) -> str:
     parsed = parse_stem(current_stem)
-    authors = metadata.get("authors") or []
+    authors = cleaned_authors(metadata.get("authors") or [])
     first_author = first_author_slug(str(authors[0])) if authors else ""
-    author = first_author or parsed["author"] or slugify((metadata.get("title") or current_stem).split(" ")[0])
+    parsed_author = parsed["author"] if not is_placeholder_author(parsed["author"]) else ""
+    title_author = title_fallback_slug(str(metadata.get("title") or ""), current_stem)
+    author = first_author or parsed_author or title_author
     year = normalize_space(str(metadata.get("year") or parsed["year"] or "undated"))
     abbr = classify_name_suffix(metadata, parsed["abbr"], str(metadata.get("category") or ""))
     abbr = slugify(abbr).replace("-", "_") if abbr else "misc"
@@ -2476,8 +2669,8 @@ def merge_frontmatter(
     data["type"] = "source-note"
     data["title"] = title or resolved_title or stem.replace("_", " ")
     ensure_aliases(data, stem)
-    authors = [normalize_space(str(author)) for author in ensure_list(data.get("authors")) if normalize_space(str(author))]
-    metadata_authors = [normalize_space(str(author)) for author in metadata.get("authors") or [] if normalize_space(str(author))]
+    authors = cleaned_authors(data.get("authors"))
+    metadata_authors = cleaned_authors(metadata.get("authors") or [])
     if prefer_metadata and metadata_authors:
         authors = metadata_authors
     elif not authors:
@@ -2535,7 +2728,7 @@ def merge_frontmatter(
             "article",
             normalize_space(str(frontmatter.get("journal_abbr") or "")).lower(),
             normalize_space(str(metadata.get("journal_abbr") or "")).lower(),
-            unknown_journal_slug(venue),
+            fallback_journal_slug(venue),
         }
     )
     tags = [
@@ -2597,7 +2790,7 @@ def refresh_note_file(
     is_stub = note_is_stub_text(frontmatter, body)
     if is_stub:
         body = upsert_section(body, "Metadata Status", build_metadata_status_lines(metadata))
-        body = upsert_section(body, "Basic Information", build_basic_information_lines(metadata, spec, pdf_path.name))
+        body = upsert_section(body, "Basic Information", build_basic_information_lines(merged, spec, pdf_path.name))
         abstract = normalize_space(str(metadata.get("abstract") or ""))
         if abstract:
             body = upsert_section(body, "Abstract / Extracted Summary", abstract)
@@ -2633,7 +2826,7 @@ def build_new_note(metadata: dict[str, Any], pdf_path: Path, spec: CollectionSpe
         build_metadata_status_lines(metadata),
         "",
         "## Basic Information",
-        build_basic_information_lines(metadata, spec, pdf_path.name),
+        build_basic_information_lines(frontmatter, spec, pdf_path.name),
         "",
         "## Abstract / Extracted Summary",
         abstract,
@@ -2947,7 +3140,7 @@ def pending_journal_source_rows(collections: list[CollectionSpec]) -> list[dict[
             entry_type = infer_entry_type(frontmatter, spec.category)
             if entry_type != "article":
                 continue
-            slug = unknown_journal_slug(venue)
+            slug = fallback_journal_slug(venue)
             if not slug or slug in KNOWN_JOURNALS:
                 continue
             source_tag = source_tag_slug(frontmatter, str(frontmatter.get("journal_abbr") or ""), spec.category)
