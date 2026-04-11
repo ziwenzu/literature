@@ -30,7 +30,7 @@ doi: 10.1017/pan.2025.10031
 url: https://doi.org/10.1017/pan.2025.10031
 zotero_key: ''
 date_added: '2026-03-17'
-last_reviewed: '2026-04-07'
+last_reviewed: '2026-04-10'
 tags:
 - literature
 - source-note
@@ -42,7 +42,7 @@ tags:
 # Potential and Pitfalls of Audio as Data for Political Research: Alignment, Features, and Classification Models
 
 ## Metadata Status
-- Synced on 2026-04-07 from local PDF and metadata lookup.
+- Synced on 2026-04-10 from local PDF and metadata lookup.
 - Core citation fields were refreshed from the PDF and external metadata.
 
 ## Basic Information
