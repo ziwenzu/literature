@@ -1513,11 +1513,11 @@ def entry_type_from_crossref(message: dict[str, Any], collection_name: str) -> s
     type_name = normalize_space(str(message.get("type") or "")).lower()
     if type_name == "journal-article":
         return "article"
-    if type_name == "book":
+    if type_name in {"book", "monograph", "edited-book"}:
         return "book"
-    if type_name == "book-chapter":
+    if type_name in {"book-chapter", "proceedings-article", "reference-entry"}:
         return "incollection"
-    if type_name in {"posted-content", "report"}:
+    if type_name in {"posted-content", "report", "component"}:
         return "techreport"
     if type_name == "dissertation" or collection_name == "Good Dissertation":
         return "phdthesis"
@@ -1628,6 +1628,8 @@ def working_paper_like(metadata: dict[str, Any]) -> bool:
 
 def book_like(metadata: dict[str, Any]) -> bool:
     entry_type = normalize_space(str(metadata.get("entry_type") or "")).lower()
+    if entry_type in {"book", "incollection"}:
+        return True
     combined = normalize_title(
         " ".join(
             part
@@ -1642,8 +1644,6 @@ def book_like(metadata: dict[str, Any]) -> bool:
     if "book chapter" in combined or ("chapter" in combined and "working paper" not in combined):
         return True
     if any(hint in combined for hint in BOOK_PUBLISHER_HINTS):
-        return True
-    if entry_type in {"book", "incollection"} and ("press" in combined or "routledge" in combined):
         return True
     return False
 
@@ -2048,10 +2048,12 @@ class MetadataResolver:
             "doi": doi,
             "url": normalize_space(str(data.get("url") or (f"https://doi.org/{doi}" if doi else ""))),
             "abstract": "",
-            "volume": "",
-            "issue": "",
-            "pages": "",
+            "volume": normalize_space(str(data.get("volume") or "")),
+            "issue": normalize_space(str(data.get("issue") or "")),
+            "pages": normalize_space(str(data.get("pages") or "")),
             "publisher": normalize_space(html.unescape(str(data.get("publisher") or ""))),
+            "note": normalize_space(html.unescape(str(data.get("note") or ""))),
+            "entry_type": normalize_space(str(data.get("entry_type") or "")).lower(),
             "source": "note",
         }
         metadata["entry_type"] = infer_entry_type(metadata, collection_name)
@@ -2753,7 +2755,10 @@ def merge_frontmatter(
         )
     )
     tags = unique_preserve_order(tags)
-    review_needed = metadata.get("source") == "fallback" or not data["title"] or (not data["authors"] and not data["venue"])
+    manual_verified = status in {"corrected-metadata", "curated-metadata"}
+    review_needed = ((metadata.get("source") == "fallback") and not manual_verified) or not data["title"] or (
+        not data["authors"] and not data["venue"]
+    )
     if review_needed and "metadata-review" not in tags:
         tags.append("metadata-review")
     if not review_needed and "metadata-review" in tags:

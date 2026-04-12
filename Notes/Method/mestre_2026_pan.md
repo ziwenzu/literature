@@ -30,7 +30,7 @@ doi: 10.1017/pan.2025.10031
 url: https://doi.org/10.1017/pan.2025.10031
 zotero_key: ''
 date_added: '2026-03-17'
-last_reviewed: '2026-04-10'
+last_reviewed: '2026-04-11'
 tags:
 - literature
 - source-note
@@ -42,7 +42,7 @@ tags:
 # Potential and Pitfalls of Audio as Data for Political Research: Alignment, Features, and Classification Models
 
 ## Metadata Status
-- Synced on 2026-04-10 from local PDF and metadata lookup.
+- Synced on 2026-04-11 from local PDF and metadata lookup.
 - Core citation fields were refreshed from the PDF and external metadata.
 
 ## Basic Information
@@ -64,4 +64,4 @@ Abstract Political science is a field rich in multimodal information sources, fr
 - [[Notes/Method/bartik_2023_sej|The Costs of Housing Regulation: Evidence from Generative Regulatory Measurement]]  | shared: analysis, classification, models
 - [[Notes/Method/ornstein_2025_psrm|How to train your stochastic parrot: large language models for political texts]]  | shared: analysis, data, models
 - [[Notes/Method/asirvatham_2026_wp|GPT as a Measurement Tool]]  | shared: classification, data
-- [[Notes/Method/baker_2026_misc|Data and Code For: Difference-in-Differences Designs: A Practitioner's Guide]]  | shared: data, research
+- [[Notes/Method/chen_2026_wp|Benchmarking Political Persuasion Risks Across Frontier Large Language Models]]  | shared: models, research
